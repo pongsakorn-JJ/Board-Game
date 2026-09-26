@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+
+<section class="summary-cards" id="summary-cards">
+  <div class="card card-free">
+    <div class="card-value" id="stat-free">-</div>
+    <div class="card-label">โต๊ะว่าง</div>
+  </div>
+  <div class="card card-busy">
+    <div class="card-value" id="stat-busy">-</div>
+    <div class="card-label">โต๊ะไม่ว่าง</div>
+  </div>
+  <div class="card">
+    <div class="card-value" id="stat-queue">-</div>
+    <div class="card-label">คิวรอ</div>
+  </div>
+  <div class="card">
+    <div class="card-value" id="stat-borrowed">-</div>
+    <div class="card-label">โต๊ะที่กำลังเล่นเกม</div>
+  </div>
+</section>
+
+<p class="hint">🟢 ว่าง · 🔴 ไม่ว่าง — 1 โต๊ะหยิบได้ครั้งละ 1 เกม: กด "คืนเกม" ก่อนแล้วค่อยเลือกเกมใหม่ · อัปเดตเรียลไทม์ (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+
+<div class="table-scroll">
+  <table class="data-table">
+    <thead>
+      <tr><th>โต๊ะ</th><th>โซน</th><th>ที่นั่ง</th><th>สถานะ</th><th>ลูกค้า</th><th>เริ่มเล่น</th><th>เหลือเวลา (นาที)</th><th>บอร์ดเกมบนโต๊ะ</th><th>จัดการ</th></tr>
+    </thead>
+    <tbody id="tables-body"></tbody>
+  </table>
+</div>
+
+<section id="queue-section">
+  <h2 class="subheading">คิวรอโต๊ะ <span class="muted" id="queue-total"></span></h2>
+  <p class="hint">ลูกค้าเข้าคิวเองจากหน้าจองโต๊ะ · เมื่อเช็คเอาท์แล้วโต๊ะว่าง กด "เรียกคิวแรกเข้านั่ง" ได้ที่นี่ (บิลจะผูกกับลูกค้าของคิวนั้น)</p>
+  <div id="queue-groups"></div>
+</section>
+
+<script>window.__initialState = <%- initialStateJson %>;</script>
+
+<%- include('partials/footer') %>

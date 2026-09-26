@@ -1,0 +1,78 @@
+<%- include('partials/header') %>
+
+<p class="hint">จองโต๊ะเล่นที่ร้าน หรือเช่าเกมกลับบ้าน — ชำระเงินและรับเกมที่เคาน์เตอร์ · อัปเดตเรียลไทม์ (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+
+<section id="my-status" class="my-status" aria-live="polite"></section>
+
+<section class="booking-card" id="booking-card">
+  <div class="mode-toggle" role="radiogroup" aria-label="ประเภทการจอง">
+    <label class="mode-option is-active"><input type="radio" name="booking-mode" value="instore" checked> 🪑 เล่นที่ร้าน</label>
+    <label class="mode-option"><input type="radio" name="booking-mode" value="rental"> 🏠 เช่ากลับบ้าน</label>
+  </div>
+
+  <!-- ===== เล่นที่ร้าน: เลือกได้ทุกโต๊ะ — โต๊ะว่าง = จองทันที, โต๊ะไม่ว่าง = เข้าคิวรอโต๊ะนั้น ===== -->
+  <div id="instore-pane">
+    <p id="instore-busy-note" class="field-note warn" hidden>คุณมีโต๊ะหรือคิวอยู่แล้ว (ดูด้านบน) — จองโต๊ะได้ทีละ 1 · ยังเช่าเกมกลับบ้านได้ตามปกติ</p>
+    <form id="instore-form" autocomplete="off">
+      <div class="form-row">
+        <label class="grow">โต๊ะ
+          <select id="instore-table" required></select>
+        </label>
+      </div>
+      <p id="instore-table-note" class="field-note"></p>
+
+      <div class="form-row">
+        <label class="checkin-only">แพ็กเกจเวลา
+          <select id="instore-package">
+            <% packages.forEach(p => { %>
+              <option value="<%= p.PackageID %>"><%= p.PackageName %> (<%= Number(p.Price).toLocaleString('th-TH') %> บาท)</option>
+            <% }) %>
+          </select>
+        </label>
+        <label class="checkin-only grow"><span class="label-text">บอร์ดเกม <span class="optional">(เลือกได้ 1 เกม / เลือกหรือเปลี่ยนทีหลังได้ที่เมนู 🎲 บอร์ดเกม)</span></span>
+          <select id="instore-game"></select>
+        </label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="instore-submit">🪑 จองโต๊ะ</button>
+        <div id="instore-msg" class="form-msg" role="status"></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- ===== เช่ากลับบ้าน: เช่าจากบัญชีของตัวเอง — ต้องมีเลขบัตรประชาชน (กรอกครั้งแรกครั้งเดียว) ===== -->
+  <form id="rental-form" autocomplete="off" hidden>
+    <div class="form-row" id="rental-nid-row" <%= hasNationalId ? 'hidden' : '' %>>
+      <label><span class="label-text">เลขบัตรประชาชน <span class="required-mark">*</span></span>
+        <input type="text" id="rental-nid" inputmode="numeric" maxlength="13" placeholder="ตัวเลข 13 หลัก" <%= hasNationalId ? '' : 'required' %>>
+      </label>
+    </div>
+    <p class="field-note" id="rental-nid-note"><%= hasNationalId
+      ? '✓ บัญชีของคุณลงทะเบียนเลขบัตรประชาชนแล้ว — เช่าได้เลย'
+      : 'การเช่ากลับบ้านต้องใช้เลขบัตรประชาชน 13 หลัก กรอกครั้งแรกครั้งเดียว (พนักงานจะตรวจบัตรตอนรับเกม)' %></p>
+
+    <div class="form-row">
+      <label class="grow">เกม
+        <select id="rental-game" required></select>
+      </label>
+      <label>กำหนดคืน
+        <input type="date" id="rental-due" required min="<%= today %>">
+      </label>
+    </div>
+
+    <p id="rental-summary" class="rental-summary"></p>
+
+    <div class="form-actions">
+      <button type="submit" class="btn-primary" id="rental-submit">🏠 ยืนยันเช่ากลับบ้าน</button>
+      <div id="rental-msg" class="form-msg" role="status"></div>
+    </div>
+  </form>
+</section>
+
+<script>
+  window.__initialState = <%- initialStateJson %>;
+  window.__me = <%- meJson %>;
+</script>
+
+<%- include('partials/footer') %>

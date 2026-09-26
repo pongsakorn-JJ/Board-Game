@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+
+<p class="hint">ลูกค้าเช่าเองจากหน้า "จองโต๊ะ / เช่าเกม" — บิลใหม่ขึ้นที่นี่ทันที เก็บค่าเช่า+มัดจำและตรวจบัตรประชาชนตอนลูกค้ามารับเกม · คืนเกมกดที่ปุ่มในแต่ละแถว (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+
+<section class="summary-cards">
+  <div class="card">
+    <div class="card-value" id="rent-active">-</div>
+    <div class="card-label">กำลังเช่าอยู่</div>
+  </div>
+  <div class="card card-busy">
+    <div class="card-value" id="rent-overdue">-</div>
+    <div class="card-label">เกินกำหนดคืน</div>
+  </div>
+</section>
+
+<p class="empty" id="rentals-empty" hidden>ยังไม่มีรายการเช่ากลับบ้าน</p>
+
+<div class="table-scroll">
+  <table class="data-table" id="rentals-table">
+    <thead>
+      <tr>
+        <th>บิล</th><th>ลูกค้า</th><th>เกม</th><th>วันที่เช่า</th><th>กำหนดคืน</th>
+        <th>ค่าเช่า / มัดจำ</th><th>สถานะ</th><th>คืนเกม</th>
+      </tr>
+    </thead>
+    <tbody id="rentals-body"></tbody>
+  </table>
+</div>
+
+<script>window.__initialState = <%- initialStateJson %>;</script>
+
+<%- include('partials/footer') %>

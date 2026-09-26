@@ -1,0 +1,41 @@
+<%- include('partials/header') %>
+
+<h2 class="subheading">สรุปรายได้รายวัน</h2>
+<table class="data-table">
+  <thead>
+    <tr><th>วันที่</th><th>รายได้รวม (บาท)</th></tr>
+  </thead>
+  <tbody>
+    <% rows.forEach(r => { %>
+      <tr>
+        <td><%= new Date(r.RevenueDate).toLocaleDateString('th-TH') %></td>
+        <td><%= Number(r.TotalRevenue).toLocaleString('th-TH') %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<h2 class="subheading">รายละเอียดรายการจอง/เช่า</h2>
+<% if (details.length === 0) { %>
+  <p class="empty">ยังไม่มีรายการ</p>
+<% } else { %>
+  <table class="data-table">
+    <thead>
+      <tr><th>ประเภท</th><th>วันที่/เวลา</th><th>รายละเอียด</th><th>ลูกค้า</th><th>จำนวนเงิน (บาท)</th><th>สถานะ</th></tr>
+    </thead>
+    <tbody>
+      <% details.forEach(d => { %>
+        <tr>
+          <td><span class="badge"><%= d.Type %></span></td>
+          <td><%= new Date(d.TxnDate).toLocaleString('th-TH') %></td>
+          <td><%= d.Detail %></td>
+          <td><%= d.CustomerName %></td>
+          <td><%= Number(d.Amount).toLocaleString('th-TH') %></td>
+          <td><%= d.Status %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<%- include('partials/footer') %>

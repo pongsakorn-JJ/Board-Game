@@ -1,0 +1,36 @@
+<%- include('partials/header') %>
+
+<section class="auth-card">
+  <div class="mode-toggle auth-tabs" role="tablist" aria-label="เข้าสู่ระบบในฐานะ">
+    <a href="/login<%= next ? '?next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'customer' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'customer' %>">👤 ลูกค้า</a>
+    <a href="/login?as=staff<%= next ? '&next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'staff' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'staff' %>">🛠 พนักงาน</a>
+  </div>
+
+  <% if (error) { %><p class="form-msg error auth-error" role="alert"><%= error %></p><% } %>
+
+  <form method="post" action="/login" class="auth-form" autocomplete="on">
+    <input type="hidden" name="as" value="<%= as %>">
+    <input type="hidden" name="next" value="<%= next %>">
+    <% if (as === 'staff') { %>
+      <label>ชื่อผู้ใช้
+        <input type="text" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="เช่น somchai">
+      </label>
+    <% } else { %>
+      <label>เบอร์โทร
+        <input type="tel" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="เช่น 0812345678" inputmode="numeric" maxlength="10">
+      </label>
+    <% } %>
+    <label>รหัสผ่าน
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn-primary btn-block">เข้าสู่ระบบ</button>
+  </form>
+
+  <% if (as === 'customer') { %>
+    <p class="auth-foot">ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิก</a> — เคยจองที่ร้านแล้วก็สมัครด้วยเบอร์เดิมได้ ประวัติและแต้มยังอยู่ครบ</p>
+  <% } else { %>
+    <p class="auth-foot muted">บัญชีพนักงานสร้างโดยผู้ดูแลระบบในฐานข้อมูล</p>
+  <% } %>
+</section>
+
+<%- include('partials/footer') %>

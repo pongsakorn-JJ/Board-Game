@@ -1,0 +1,68 @@
+<%- include('partials/header') %>
+
+<p class="hint">ข้อมูลในหน้านี้อ่านจาก SQL Server โดยตรง — เพิ่ม/แก้ไข/ลบ แล้วบันทึกลงฐานข้อมูลทันที และอัปเดตให้ทุกจออัตโนมัติ
+  (รวมถึงการจองของลูกค้าและการแก้จาก SSMS) · ดึงข้อมูลล่าสุดเมื่อ <span id="admin-updated">-</span></p>
+
+<nav class="admin-tabs" id="admin-tabs" aria-label="เลือกตาราง">
+  <div class="admin-tab-group">
+    <span class="admin-tab-title">ข้อมูลหลัก</span>
+    <% Object.values(meta).filter(m => m.group === 'master').forEach(m => { %>
+      <a href="/admin/data?t=<%= m.key %>" data-entity="<%= m.key %>" class="<%= m.key === startEntity ? 'active' : '' %>"><%= m.icon %> <%= m.label %></a>
+    <% }) %>
+  </div>
+  <div class="admin-tab-group">
+    <span class="admin-tab-title">รายการจอง</span>
+    <% Object.values(meta).filter(m => m.group === 'booking').forEach(m => { %>
+      <a href="/admin/data?t=<%= m.key %>" data-entity="<%= m.key %>" class="<%= m.key === startEntity ? 'active' : '' %>"><%= m.icon %> <%= m.label %></a>
+    <% }) %>
+  </div>
+</nav>
+
+<section class="admin-panel">
+  <div class="admin-toolbar">
+    <h2 id="admin-title">-</h2>
+    <input type="search" id="admin-search" placeholder="🔍 ค้นหาในตารางนี้..." aria-label="ค้นหา">
+    <span class="muted" id="admin-count"></span>
+    <button type="button" class="btn-primary" id="admin-add" hidden>+ เพิ่ม</button>
+  </div>
+  <p class="field-note" id="admin-note" hidden></p>
+  <div class="table-scroll">
+    <table class="data-table admin-table">
+      <thead id="admin-head"></thead>
+      <tbody id="admin-body"><tr><td class="empty">กำลังโหลดข้อมูลจากฐานข้อมูล...</td></tr></tbody>
+    </table>
+  </div>
+  <p class="form-msg error" id="admin-error" hidden></p>
+</section>
+
+<!-- ฟอร์มเพิ่ม / แก้ไข -->
+<dialog id="edit-dialog" class="admin-dialog" aria-labelledby="edit-title">
+  <form id="edit-form" novalidate>
+    <h2 id="edit-title">-</h2>
+    <div class="admin-fields" id="edit-fields"></div>
+    <p class="form-msg" id="edit-msg"></p>
+    <div class="dialog-actions">
+      <button type="button" class="btn-secondary" data-close-dialog>ยกเลิก</button>
+      <button type="submit" class="btn-primary" id="edit-save">บันทึกลงฐานข้อมูล</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ยืนยันการลบ -->
+<dialog id="delete-dialog" class="admin-dialog" aria-labelledby="delete-title">
+  <h2 id="delete-title">ลบข้อมูล?</h2>
+  <p id="delete-target" class="delete-target"></p>
+  <div id="delete-impact"></div>
+  <p class="form-msg" id="delete-msg"></p>
+  <div class="dialog-actions">
+    <button type="button" class="btn-secondary" data-close-dialog>ยกเลิก</button>
+    <button type="button" class="btn-danger" id="delete-confirm">ลบถาวร</button>
+  </div>
+</dialog>
+
+<script>
+  window.__adminMeta = <%- metaJson %>;
+  window.__adminStart = <%- JSON.stringify(startEntity) %>;
+</script>
+
+<%- include('partials/footer', { extraScripts: ['/js/admin-data.js'] }) %>

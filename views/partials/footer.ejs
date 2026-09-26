@@ -1,0 +1,7 @@
+  </main>
+  <script>window.__user = <%- JSON.stringify(user ? { role: user.role } : null) %>;</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/realtime.js"></script>
+  <% if (typeof extraScripts !== 'undefined') { extraScripts.forEach(src => { %><script src="<%= src %>"></script>
+  <% }) } %></body>
+</html>

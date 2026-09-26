@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | Board Game Cafe</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎲%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <%
+    const navLink = (href, label, extra) =>
+      `<a href="${href}" class="${currentPath === href ? 'active' : ''}">${label}${extra || ''}</a>`;
+    const queueBadge = '<span id="nav-queue-badge" class="nav-count" style="display:none;" title="จำนวนคิวที่รออยู่">0</span>';
+    const gameBadge = '<span id="nav-game-badge" class="nav-count nav-count-hint" hidden title="โต๊ะของคุณยังไม่ได้เลือกเกม">เลือกเกม</span>';
+  %>
+  <header class="topbar">
+    <div class="brand">🎲 Board Game Cafe</div>
+    <nav>
+      <% if (user && user.role === 'admin') { %>
+        <%- navLink('/dashboard', 'สถานะโต๊ะ ', queueBadge) %>
+        <%- navLink('/games', 'บอร์ดเกม') %>
+        <%- navLink('/rentals', 'เช่ากลับบ้าน') %>
+        <%- navLink('/revenue', 'รายได้') %>
+        <%- navLink('/admin/data', '🗂 จัดการข้อมูล') %>
+      <% } else if (user) { %>
+        <%- navLink('/booking', 'จองโต๊ะ / เช่าเกม') %>
+        <%- navLink('/games', '🎲 บอร์ดเกม ', gameBadge) %>
+        <%- navLink('/me', 'บัญชีของฉัน') %>
+      <% } else { %>
+        <%- navLink('/games', 'บอร์ดเกม') %>
+        <%- navLink('/login', 'เข้าสู่ระบบ') %>
+        <%- navLink('/register', 'สมัครสมาชิก') %>
+      <% } %>
+    </nav>
+    <div class="topbar-right">
+      <div class="live-indicator" id="live-indicator" title="สถานะการเชื่อมต่อเรียลไทม์">
+        <span class="dot" id="live-dot"></span>
+        <span id="live-text">กำลังเชื่อมต่อ...</span>
+      </div>
+      <% if (user) { %>
+        <div class="user-menu">
+          <span class="user-chip <%= user.role === 'admin' ? 'is-admin' : '' %>" title="<%= user.role === 'admin' ? 'พนักงาน' : 'ลูกค้า' %>">
+            <%= user.role === 'admin' ? '🛠' : '👤' %> <%= user.name %>
+            <small><%= user.role === 'admin' ? 'พนักงาน' : 'ลูกค้า' %></small>
+          </span>
+          <a href="/account/password" class="user-link">เปลี่ยนรหัสผ่าน</a>
+          <form method="post" action="/logout" class="logout-form">
+            <button type="submit" class="btn-logout">ออกจากระบบ</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  </header>
+  <main class="container" data-page="<%= currentPath %>">
+    <h1><%= title %></h1>
+    <div id="toast-area" class="toast-area"></div>

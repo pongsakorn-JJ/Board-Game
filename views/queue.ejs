@@ -1,0 +1,61 @@
+<%- include('partials/header') %>
+
+<% const availableTables = tables.filter(t => t.Status === 'Available'); %>
+
+<h2 class="subheading">คิวที่รออยู่</h2>
+
+<p class="empty" id="queue-empty-msg" style="<%= queue.length > 0 ? 'display:none;' : '' %>">ไม่มีลูกค้ารอคิวในขณะนี้ — ไปที่เมนู "จองโต๊ะ" เพื่อลงชื่อเข้าคิวได้</p>
+
+<table class="data-table" id="queue-table" style="<%= queue.length === 0 ? 'display:none;' : '' %>">
+  <thead>
+    <tr><th>ลำดับ</th><th>ชื่อลูกค้า</th><th>เบอร์โทร</th><th>ลงคิวเมื่อ</th><th>รอมาแล้ว (นาที)</th></tr>
+  </thead>
+  <tbody id="queue-body">
+    <% queue.forEach((q, i) => { %>
+      <tr>
+        <td><%= i + 1 %></td>
+        <td><%= q.CustomerName %></td>
+        <td><%= q.Phone || '-' %></td>
+        <td><%= new Date(q.QueueTime).toLocaleTimeString('th-TH') %></td>
+        <td><%= q.WaitedMinutes %></td>
+      </tr>
+    <% }) %>
+  </tbody>
+</table>
+
+<h2 class="subheading">เรียกคิวเข้านั่ง</h2>
+<p class="hint">เลือกโต๊ะว่าง + แพ็กเกจเวลา แล้วกดเรียก ระบบจะเรียกคิวที่รอมานานที่สุด (FIFO) เข้านั่งโต๊ะนั้นให้อัตโนมัติ</p>
+
+<p class="empty" id="seat-next-msg-empty" style="<%= (queue.length > 0 && availableTables.length > 0) ? 'display:none;' : '' %>">
+  <%= queue.length === 0 ? 'ไม่มีคิวรอ' : 'ยังไม่มีโต๊ะว่างให้เรียกคิวเข้านั่งตอนนี้' %>
+</p>
+
+<form id="seat-next-form" class="borrow-form" style="<%= (queue.length > 0 && availableTables.length > 0) ? '' : 'display:none;' %>">
+  <div class="form-row">
+    <label>โต๊ะว่าง
+      <select id="seat-next-table" required>
+        <% availableTables.forEach(t => { %>
+          <option value="<%= t.TableID %>">โต๊ะ #<%= t.TableID %> (<%= t.Zone %>, นั่งได้ <%= t.Capacity %> คน)</option>
+        <% }) %>
+      </select>
+    </label>
+    <label>แพ็กเกจเวลา
+      <select id="seat-next-package" required>
+        <% packages.forEach(p => { %>
+          <option value="<%= p.PackageID %>"><%= p.PackageName %> (<%= p.Price %> บาท)</option>
+        <% }) %>
+      </select>
+    </label>
+    <label>พนักงาน
+      <select id="seat-next-employee" required>
+        <% employees.forEach(e => { %>
+          <option value="<%= e.EmployeeID %>"><%= e.Name %></option>
+        <% }) %>
+      </select>
+    </label>
+    <button type="submit">➡️ เรียกคิวถัดไปเข้านั่ง</button>
+  </div>
+  <div id="seat-next-msg" class="form-msg"></div>
+</form>
+
+<%- include('partials/footer') %>

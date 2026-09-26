@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<p class="hint">ข้อมูลของคุณอัปเดตอัตโนมัติ (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+
+<section class="me-profile" id="me-profile"></section>
+
+<h2 class="subheading">ตอนนี้</h2>
+<section id="my-status" class="my-status" aria-live="polite"></section>
+
+<h2 class="subheading">ประวัติการเล่นที่ร้าน</h2>
+<div class="table-scroll">
+  <table class="data-table" id="me-sessions-table">
+    <thead><tr><th>วันที่</th><th>โต๊ะ</th><th>แพ็กเกจ</th><th>เกมที่เล่น</th><th>ยอดชำระ (บาท)</th><th>สถานะ</th></tr></thead>
+    <tbody id="me-sessions"></tbody>
+  </table>
+</div>
+<p class="empty" id="me-sessions-empty" hidden>ยังไม่มีประวัติการจองโต๊ะ</p>
+
+<h2 class="subheading">ประวัติเช่ากลับบ้าน</h2>
+<div class="table-scroll">
+  <table class="data-table" id="me-rentals-table">
+    <thead><tr><th>บิล</th><th>เกม</th><th>วันที่เช่า</th><th>กำหนดคืน</th><th>ค่าเช่า / มัดจำ</th><th>สถานะ</th></tr></thead>
+    <tbody id="me-rentals"></tbody>
+  </table>
+</div>
+<p class="empty" id="me-rentals-empty" hidden>ยังไม่เคยเช่ากลับบ้าน — ติดต่อพนักงานที่เคาน์เตอร์ (ต้องใช้บัตรประชาชน)</p>
+
+<script>
+  window.__initialState = <%- initialStateJson %>;
+  window.__me = <%- meJson %>;
+</script>
+
+<%- include('partials/footer') %>

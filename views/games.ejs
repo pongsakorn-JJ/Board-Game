@@ -1,0 +1,75 @@
+<%- include('partials/header') %>
+
+<%
+  const difficultyTh = { Easy: 'ง่าย', Medium: 'ปานกลาง', Hard: 'ยาก' };
+  const steps = (text) => String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const money = (n) => Number(n || 0).toLocaleString('th-TH');
+%>
+
+<% if (isCustomer) { %>
+  <p class="hint">เลือกเกมให้โต๊ะที่คุณกำลังเล่นได้ตลอดเวลา · 1 โต๊ะเล่นได้ครั้งละ 1 เกม — อยากเปลี่ยนเกมให้กด "คืนเกม" ก่อน แล้วเลือกเกมใหม่ · สต๊อกอัปเดตเรียลไทม์ (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+  <section id="my-game-panel" class="my-game-panel" aria-live="polite"></section>
+<% } else { %>
+  <p class="hint"><%= user && user.role === 'admin'
+    ? 'ลูกค้าเลือก/คืนเกมเองได้ที่เมนู "บอร์ดเกม" · พนักงานเปลี่ยนเกมให้ได้ที่หน้า "สถานะโต๊ะ"'
+    : 'เข้าสู่ระบบเพื่อจองโต๊ะและเลือกเกม' %> · 1 โต๊ะหยิบได้ครั้งละ 1 เกม · จำนวนคงเหลืออัปเดตเรียลไทม์ (อัปเดตล่าสุด <span id="last-updated">-</span>)</p>
+<% } %>
+
+<div class="game-filter">
+  <input type="search" id="game-search" placeholder="🔍 ค้นหาชื่อเกม / หมวด..." aria-label="ค้นหาเกม">
+  <select id="game-players" aria-label="จำนวนผู้เล่น">
+    <option value="">ผู้เล่นกี่คนก็ได้</option>
+    <% [2,3,4,5,6,8].forEach(n => { %><option value="<%= n %>">เล่นได้ <%= n %> คน</option><% }) %>
+  </select>
+  <label class="check-inline"><input type="checkbox" id="game-available-only"> เฉพาะเกมที่ว่าง</label>
+  <span class="muted" id="game-filter-count"></span>
+</div>
+<p class="empty" id="game-filter-empty" hidden>ไม่พบเกมที่ตรงกับเงื่อนไข</p>
+
+<div class="game-grid">
+  <% games.forEach(g => { const howto = steps(g.HowToPlay); %>
+    <article class="game-card" data-game-id="<%= g.GameID %>" data-min="<%= g.MinPlayer %>" data-max="<%= g.MaxPlayer %>"
+             data-search="<%= (g.Name + ' ' + (g.CategoryName || '')).toLowerCase() %>">
+      <div class="game-cover">
+        <img src="<%= g.ImageUrl || '/images/games/default.svg' %>" alt="ภาพประกอบเกม <%= g.Name %>" loading="lazy"
+             onerror="this.onerror=null;this.src='/images/games/default.svg'">
+        <span class="stock-badge <%= g.AvailableQty > 0 ? 'in' : 'out' %>" data-stock>
+          <%= g.AvailableQty > 0 ? `ว่าง ${g.AvailableQty}/${g.TotalQty}` : `หมด 0/${g.TotalQty}` %>
+        </span>
+      </div>
+      <div class="game-body">
+        <h2 class="game-title"><%= g.Name %></h2>
+        <div class="game-meta">
+          <% if (g.CategoryName) { %><span class="badge"><%= g.CategoryName %></span><% } %>
+          <span>👥 <%= g.MinPlayer %>–<%= g.MaxPlayer %> คน</span>
+          <% if (g.PlayTime) { %><span>⏱ <%= g.PlayTime %></span><% } %>
+          <span>ระดับ <%= difficultyTh[g.Difficulty] || g.Difficulty || '-' %></span>
+        </div>
+        <p class="game-desc"><%= g.ShortDescription || 'ยังไม่มีคำอธิบายเกมนี้ — เพิ่มได้ที่คอลัมน์ ShortDescription ในตาราง tbl_boardgame' %></p>
+        <p class="game-inuse" data-inuse hidden></p>
+        <% if (isCustomer) { %><div class="game-actions" data-my-actions></div><% } %>
+
+        <details class="game-howto">
+          <summary>📖 วิธีเล่นแบบย่อ</summary>
+          <% if (howto.length) { %>
+            <ol><% howto.forEach(s => { %><li><%= s %></li><% }) %></ol>
+          <% } else { %>
+            <p class="empty">ยังไม่มีคู่มือ — เพิ่มได้ที่คอลัมน์ HowToPlay (1 บรรทัด = 1 ขั้นตอน)</p>
+          <% } %>
+        </details>
+
+        <div class="game-price">
+          <span>🏠 เช่ากลับบ้าน <strong><%= money(g.OffsiteRentalRate) %></strong> บาท</span>
+          <span class="muted">มัดจำ <%= money(g.DepositAmount) %> บาท</span>
+        </div>
+      </div>
+    </article>
+  <% }) %>
+</div>
+
+<script>
+  <% if (meJson) { %>window.__me = <%- meJson %>;<% } %>
+  window.__initialState = <%- initialStateJson %>;
+</script>
+
+<%- include('partials/footer') %>

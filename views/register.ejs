@@ -1,0 +1,35 @@
+<%- include('partials/header') %>
+
+<section class="auth-card">
+  <p class="hint">สมัครแล้วจองโต๊ะ เข้าคิว และดูประวัติ/แต้มสะสมของตัวเองได้ · เคยจองที่ร้านแล้วใช้เบอร์เดิมสมัครได้เลย ประวัติและแต้มยังอยู่ครบ</p>
+
+  <% if (error) { %><p class="form-msg error auth-error" role="alert"><%= error %></p><% } %>
+
+  <form method="post" action="/register" class="auth-form" autocomplete="on">
+    <div class="auth-row">
+      <label>ชื่อ
+        <input type="text" name="firstName" value="<%= values.firstName || '' %>" required maxlength="50" autocomplete="given-name" autofocus>
+      </label>
+      <label>นามสกุล
+        <input type="text" name="lastName" value="<%= values.lastName || '' %>" required maxlength="50" autocomplete="family-name">
+      </label>
+    </div>
+    <label>เบอร์โทร <span class="optional">(ใช้เข้าสู่ระบบ)</span>
+      <input type="tel" name="phone" value="<%= values.phone || '' %>" required pattern="0[0-9]{8,9}" maxlength="10" inputmode="numeric"
+             placeholder="เช่น 0812345678" title="ตัวเลข 9-10 หลัก ขึ้นต้นด้วย 0" autocomplete="tel">
+    </label>
+    <div class="auth-row">
+      <label>รหัสผ่าน <span class="optional">(อย่างน้อย 6 ตัว)</span>
+        <input type="password" name="password" required minlength="6" autocomplete="new-password">
+      </label>
+      <label>ยืนยันรหัสผ่าน
+        <input type="password" name="confirm" required minlength="6" autocomplete="new-password">
+      </label>
+    </div>
+    <button type="submit" class="btn-primary btn-block">สมัครสมาชิก</button>
+  </form>
+
+  <p class="auth-foot">มีบัญชีแล้ว? <a href="/login">เข้าสู่ระบบ</a></p>
+</section>
+
+<%- include('partials/footer') %>
