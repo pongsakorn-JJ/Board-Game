@@ -1,5 +1,7 @@
 <%- include('partials/header') %>
 
+<div class="auth-hero"><img src="/images/brand/logo-hd.webp" alt="Bluff Chain บลัฟเชน" width="760" height="686"></div>
+
 <section class="auth-card">
   <div class="mode-toggle auth-tabs" role="tablist" aria-label="เข้าสู่ระบบในฐานะ">
     <a href="/login<%= next ? '?next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'customer' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'customer' %>">👤 ลูกค้า</a>
@@ -33,4 +35,4 @@
   <% } %>
 </section>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { extraScripts: ['/js/bg-intro.js', '/js/sparkle.js'] }) %>

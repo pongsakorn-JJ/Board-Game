@@ -1,4 +1,4 @@
-/* Board Game Cafe — Realtime client
+/* Bluff Chain (บลัฟเชน) Board Game Cafe — Realtime client
    รับสถานะล่าสุด (โต๊ะ/เกม/คิว/บิลเช่า) ผ่าน Socket.IO แล้วอัปเดตหน้าเว็บโดยไม่ต้องรีเฟรช
    ใช้ไฟล์เดียวทุกหน้า — แต่ละส่วนเช็คก่อนว่ามี element ของหน้านั้นอยู่ไหม */
 (function () {

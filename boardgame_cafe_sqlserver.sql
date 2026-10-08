@@ -32,7 +32,7 @@ CREATE TABLE tbl_customer (
     FirstName    VARCHAR(50)  NOT NULL,
     LastName     VARCHAR(50)  NOT NULL,
     Phone        VARCHAR(15)  NOT NULL UNIQUE,
-    NationalID   CHAR(13)     NULL UNIQUE,   -- บังคับกรอกตอนลงทะเบียนเช่ากลับบ้าน
+    NationalID   CHAR(13)     NULL,          -- บังคับกรอกตอนเช่ากลับบ้าน (ห้ามซ้ำ: UX_customer_nationalid)
     Points       INT          NOT NULL DEFAULT 0,
     CreatedDate  DATETIME     NOT NULL DEFAULT GETDATE(),
     PasswordHash VARCHAR(100) NULL,          -- bcrypt hash (NULL = ยังไม่มีบัญชีเว็บ)
@@ -179,6 +179,9 @@ CREATE INDEX IX_queue_table_status ON tbl_queue(TableID, Status, QueueTime);
 -- กฎ 1 โต๊ะ หยิบได้ครั้งละ 1 เกม (เกมที่ยังไม่คืนต่อ session ได้แค่ 1 แถว)
 CREATE UNIQUE INDEX UX_instoreborrow_one_active_game ON tbl_instoreborrow(SessionID) WHERE ReturnTime IS NULL;
 CREATE UNIQUE INDEX UX_employee_username ON tbl_employee(Username) WHERE Username IS NOT NULL;
+-- เลขบัตร ปชช. ห้ามซ้ำ แต่ลูกค้าที่ยังไม่กรอก (NULL) มีได้หลายคน
+-- (UNIQUE constraint ปกติของ SQL Server ยอมให้มี NULL ได้แค่แถวเดียว จึงใช้ filtered unique index แทน)
+CREATE UNIQUE INDEX UX_customer_nationalid ON tbl_customer(NationalID) WHERE NationalID IS NOT NULL;
 GO
 
 /* =========================================================
@@ -1021,4 +1024,25 @@ BEGIN
     BEGIN RAISERROR(N'ไม่พบบิลเช่านี้ (อาจถูกลบไปแล้ว)', 16, 1); RETURN; END
     DELETE FROM tbl_offsiterental WHERE RentalID = @RentalID;
 END
+GO
+
+/* ---------------------------------------------------------
+   8.3 แก้ฐานข้อมูลเดิม: เลขบัตร ปชช. ว่าง (NULL) ได้หลายคน
+   ฐานที่สร้างจากไฟล์รุ่นเก่ามี UNIQUE constraint บน NationalID → เพิ่มลูกค้าที่ไม่กรอกเลขบัตรได้แค่คนเดียว
+   batch นี้เปลี่ยนเป็น filtered unique index (รันซ้ำได้ ไม่ลบข้อมูล — เว็บรันให้เองตอนเปิด)
+   --------------------------------------------------------- */
+-- @auto-upgrade
+DECLARE @uq sysname, @cmd nvarchar(400);
+SELECT @uq = kc.name
+FROM sys.key_constraints kc
+JOIN sys.index_columns ic ON ic.object_id = kc.parent_object_id AND ic.index_id = kc.unique_index_id
+JOIN sys.columns c ON c.object_id = ic.object_id AND c.column_id = ic.column_id
+WHERE kc.parent_object_id = OBJECT_ID('dbo.tbl_customer') AND kc.type = 'UQ' AND c.name = 'NationalID';
+IF @uq IS NOT NULL
+BEGIN
+    SET @cmd = N'ALTER TABLE dbo.tbl_customer DROP CONSTRAINT ' + QUOTENAME(@uq);
+    EXEC sp_executesql @cmd;
+END
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_customer_nationalid' AND object_id = OBJECT_ID('dbo.tbl_customer'))
+    CREATE UNIQUE INDEX UX_customer_nationalid ON dbo.tbl_customer(NationalID) WHERE NationalID IS NOT NULL;
 GO

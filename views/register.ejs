@@ -1,5 +1,7 @@
 <%- include('partials/header') %>
 
+<div class="auth-hero"><img src="/images/brand/logo-hd.webp" alt="Bluff Chain บลัฟเชน" width="760" height="686"></div>
+
 <section class="auth-card">
   <p class="hint">สมัครแล้วจองโต๊ะ เข้าคิว และดูประวัติ/แต้มสะสมของตัวเองได้ · เคยจองที่ร้านแล้วใช้เบอร์เดิมสมัครได้เลย ประวัติและแต้มยังอยู่ครบ</p>
 
@@ -32,4 +34,4 @@
   <p class="auth-foot">มีบัญชีแล้ว? <a href="/login">เข้าสู่ระบบ</a></p>
 </section>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { extraScripts: ['/js/bg-intro.js', '/js/sparkle.js'] }) %>

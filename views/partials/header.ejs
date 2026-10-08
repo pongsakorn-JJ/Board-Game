@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> | Board Game Cafe</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🎲%3C/text%3E%3C/svg%3E">
+  <title><%= title %> | Bluff Chain บลัฟเชน</title>
+  <link rel="icon" type="image/png" href="/images/brand/favicon.png">
+  <link rel="apple-touch-icon" href="/images/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
   <meta name="theme-color" content="#0b0d14">
   <link rel="stylesheet" href="/css/style.css">
@@ -17,7 +18,10 @@
     const gameBadge = '<span id="nav-game-badge" class="nav-count nav-count-hint" hidden title="โต๊ะของคุณยังไม่ได้เลือกเกม">เลือกเกม</span>';
   %>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="Board Game Cafe หน้าแรก"><span class="brand-icon" aria-hidden="true">🎲</span><span class="brand-text">Board Game Cafe</span></a>
+    <a class="brand" href="/" aria-label="Bluff Chain บลัฟเชน หน้าแรก">
+      <img class="brand-logo" src="/images/brand/icon.png" alt="" width="40" height="40">
+      <span class="brand-words"><span class="brand-text">Bluff Chain</span><small class="brand-sub">บลัฟเชน · บอร์ดเกมคาเฟ่</small></span>
+    </a>
     <nav>
       <% if (user && user.role === 'admin') { %>
         <%- navLink('/dashboard', 'สถานะโต๊ะ ', queueBadge) %>

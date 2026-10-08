@@ -476,7 +476,12 @@ async function checkUnique(pool, entity, values, id) {
 // ข้อความ error ของ SQL Server → ภาษาคน
 function friendlyDbError(err) {
   const msg = err.message || '';
-  if (err.number === 2601 || err.number === 2627) return 'ข้อมูลซ้ำกับที่มีอยู่แล้วในฐานข้อมูล (ค่าที่ต้องไม่ซ้ำ)';
+  if (err.number === 2601 || err.number === 2627) {
+    if (/tbl_customer/i.test(msg) && /\(<NULL>\)|NULL\)/.test(msg)) {
+      return 'ฐานข้อมูลยังไม่ยอมให้ลูกค้าหลายคนเว้นเลขบัตรประชาชนว่าง — ปิดแล้วเปิด npm start ใหม่ (เว็บจะแก้ให้เอง) แล้วลองอีกครั้ง';
+    }
+    return 'ข้อมูลซ้ำกับที่มีอยู่แล้วในฐานข้อมูล (ค่าที่ต้องไม่ซ้ำ)';
+  }
   if (err.number === 547) {
     if (/CK_boardgame_qty/.test(msg)) return 'จำนวนกล่องทั้งหมดน้อยกว่าที่ถูกหยิบ/เช่าอยู่';
     if (/CK_session_time/.test(msg)) return 'เวลาหมดต้องอยู่หลังเวลาเริ่มเล่น';

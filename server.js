@@ -63,5 +63,5 @@ realtime.startPolling(3000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`Board Game Cafe web running at http://localhost:${PORT}`);
+  console.log(`Bluff Chain (บลัฟเชน) web running at http://localhost:${PORT}`);
 });

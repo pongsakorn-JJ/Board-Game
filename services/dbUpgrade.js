@@ -12,9 +12,10 @@ function upgradeBatches() {
   return text
     .split(/^\s*GO\s*$/im)
     .map(b => b.trim())
-    .filter(b => /CREATE OR ALTER\s+(FUNCTION|VIEW|TRIGGER|PROCEDURE)\b/i.test(b))
+    .filter(b => /^-- @auto-upgrade\s*$/m.test(b) ||                // batch แก้โครงสร้างแบบรันซ้ำได้ (ติดป้ายไว้)
+      /CREATE OR ALTER\s+(FUNCTION|VIEW|TRIGGER|PROCEDURE)\b/i.test(b))
     .filter(b => !/\b(DROP DATABASE|CREATE TABLE|INSERT INTO|ALTER TABLE)\b/i.test(b.replace(/--.*$/gm, '')
-      .replace(/CREATE OR ALTER[\s\S]*$/i, '')));            // กันพลาด: ส่วนก่อน CREATE ต้องเป็นคอมเมนต์เท่านั้น
+      .replace(/CREATE OR ALTER[\s\S]*$/i, '')) || /^-- @auto-upgrade\s*$/m.test(b));   // กันพลาด: ส่วนก่อน CREATE ต้องเป็นคอมเมนต์เท่านั้น
 }
 
 async function runUpgrade(pool) {
@@ -26,7 +27,7 @@ async function runUpgrade(pool) {
   let ok = 0;
   const failed = [];
   for (const b of batches) {
-    const name = (b.match(/CREATE OR ALTER\s+\w+\s+(?:dbo\.)?(\w+)/i) || [])[1] || '?';
+    const name = (b.match(/CREATE OR ALTER\s+\w+\s+(?:dbo\.)?(\w+)/i) || [])[1] || 'UX_customer_nationalid (เลขบัตรว่างได้หลายคน)';
     try {
       await pool.request().batch(b);
       ok++;
@@ -34,7 +35,7 @@ async function runUpgrade(pool) {
       failed.push(`${name}: ${err.message}`);
     }
   }
-  console.log(`[db-upgrade] อัปเดต Function/View/Trigger/Stored Procedure แล้ว ${ok}/${batches.length} รายการ`);
+  console.log(`[db-upgrade] อัปเดตฐานข้อมูล (Function/View/Trigger/SP/Index) แล้ว ${ok}/${batches.length} รายการ`);
   if (failed.length) {
     console.warn('[db-upgrade] ไม่สำเร็จ (ลองรัน boardgame_cafe_sqlserver.sql ใน SSMS):\n  ' + failed.join('\n  '));
   }
