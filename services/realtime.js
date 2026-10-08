@@ -13,16 +13,12 @@ function attachIo(io) {
 async function buildState() {
   const pool = await getPool();
 
+  // VIEW vw_TableStatus (ข้างในเรียก fn_RemainingMinutes + fn_WaitingQueueCount) — update_v6
   const tables = (await pool.request().query(`
-    SELECT t.TableID, t.Zone, t.Capacity, t.Status,
-           s.SessionID, s.StartTime, s.ExpectedEndTime,
-           DATEDIFF(MINUTE, GETDATE(), s.ExpectedEndTime) AS MinutesLeft,
-           CASE WHEN c.CustomerID IS NULL THEN NULL ELSE CONCAT(c.FirstName, ' ', c.LastName) END AS CustomerName,
-           c.Phone AS CustomerPhone
-    FROM tbl_table t
-    LEFT JOIN tbl_session s ON t.TableID = s.TableID AND s.Status = 'Active'
-    LEFT JOIN tbl_customer c ON s.CustomerID = c.CustomerID
-    ORDER BY t.TableID
+    SELECT TableID, Zone, Capacity, Status, SessionID, StartTime, ExpectedEndTime,
+           MinutesLeft, CustomerName, CustomerPhone, WaitingCount
+    FROM vw_TableStatus
+    ORDER BY TableID
   `)).recordset;
 
   const games = (await pool.request().query(`
@@ -42,25 +38,22 @@ async function buildState() {
     ORDER BY ib.BorrowTime ASC
   `)).recordset;
 
-  // คิวที่รออยู่ — TableID = รอโต๊ะไหน (NULL = คิวรวม)
+  // คิวที่รออยู่ — TableID = รอโต๊ะไหน (NULL = คิวรวม) ต้องรัน update_v2_queue_per_table.sql ก่อน
+  // VIEW vw_CurrentQueue
   const queue = (await pool.request().query(`
-    SELECT QueueID, TableID, CustomerID, CustomerName, Phone, QueueTime,
-           DATEDIFF(MINUTE, QueueTime, GETDATE()) AS WaitedMinutes
-    FROM tbl_queue
-    WHERE Status = 'Waiting'
+    SELECT QueueID, TableID, CustomerID, CustomerName, Phone, QueueTime, WaitedMinutes
+    FROM vw_CurrentQueue
     ORDER BY QueueTime ASC
   `)).recordset;
 
   // บิลเช่ากลับบ้าน (ที่ยังไม่คืนขึ้นก่อน) — ใช้ในหน้า "เช่ากลับบ้าน"
+  // VIEW vw_RentalDetail (OverdueDays/IsOverdue มาจาก fn_RentalOverdueDays)
   const rentals = (await pool.request().query(`
-    SELECT TOP 100 r.RentalID, c.FirstName, c.LastName, c.Phone,
-           g.Name AS GameName, r.RentalDate, r.DueDate, r.RentalFee, r.Deposit,
-           r.Status, r.ReturnDate, r.ReturnCondition, r.DepositRefunded,
-           CASE WHEN r.Status <> 'Returned' AND r.DueDate < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS IsOverdue
-    FROM tbl_offsiterental r
-    JOIN tbl_customer c ON r.CustomerID = c.CustomerID
-    JOIN tbl_boardgame g ON r.GameID = g.GameID
-    ORDER BY CASE WHEN r.Status <> 'Returned' THEN 0 ELSE 1 END, r.DueDate ASC, r.RentalID DESC
+    SELECT TOP 100 RentalID, FirstName, LastName, Phone, GameName, RentalDate, DueDate,
+           RentalFee, Deposit, Status, ReturnDate, ReturnCondition, DepositRefunded,
+           OverdueDays, IsOverdue
+    FROM vw_RentalDetail
+    ORDER BY CASE WHEN Status <> 'Returned' THEN 0 ELSE 1 END, DueDate ASC, RentalID DESC
   `)).recordset;
 
   // แพ็กเกจเวลา + พนักงาน ใช้ในฟอร์ม "จองโต๊ะ" (ข้อมูลนิ่ง เปลี่ยนไม่บ่อย แต่ส่งมาด้วยเพื่อให้ทุกจอเห็นตรงกัน)

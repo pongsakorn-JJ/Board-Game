@@ -14,6 +14,8 @@
     if (!liveDot) return;
     liveDot.className = 'dot ' + status;
     if (liveText) liveText.textContent = text;
+    const box = document.getElementById('live-indicator');
+    if (box) box.title = text;   // จอแคบซ่อนข้อความ เหลือจุดสถานะ + tooltip
   }
 
   function escapeHtml(str) {
@@ -133,7 +135,8 @@
       state.tables.map(t => [t.TableID, t.Status, t.SessionID]),
       state.borrowed.map(b => [b.BorrowID, b.SessionID]),
       state.games.map(g => [g.GameID, g.AvailableQty > 0]),
-      state.queue.map(q => q.TableID)
+      state.queue.map(q => q.TableID),
+      state.packages.map(p => [p.PackageID, p.DurationMinutes, p.Price])
     ]);
     if (tbody.dataset.sig !== sig) {
       tbody.dataset.sig = sig;
@@ -156,8 +159,16 @@
         }
         const waiting = state.queue.filter(q => q.TableID === t.TableID).length;
         const statusText = (t.Status === 'Available' ? 'ว่าง' : 'ไม่ว่าง') + (waiting ? ` · คิว ${waiting}` : '');
+        const extendOpts = state.packages.filter(p => p.DurationMinutes)
+          .map(p => `<option value="${p.PackageID}">+${p.DurationMinutes} นาที (${money(p.Price)} ฿)</option>`).join('');
         const checkoutHtml = (t.Status === 'Occupied' && t.SessionID)
-          ? `<button type="button" class="btn-checkout" data-checkout-session-id="${t.SessionID}">เช็คเอาท์</button>`
+          ? `<div class="row-actions">
+               ${extendOpts ? `<div class="extend-box">
+                 <select class="extend-pkg" aria-label="ต่อเวลาโต๊ะ #${t.TableID}">${extendOpts}</select>
+                 <button type="button" class="btn-extend" data-extend-session="${t.SessionID}">⏱ ต่อเวลา</button>
+               </div>` : ''}
+               <button type="button" class="btn-checkout" data-checkout-session-id="${t.SessionID}">เช็คเอาท์</button>
+             </div>`
           : '<span class="empty">-</span>';
 
         return `<tr class="${t.Status === 'Available' ? 'status-free' : 'status-busy'}" data-table-id="${t.TableID}">
@@ -511,7 +522,7 @@
     if ($('rent-active')) $('rent-active').textContent = active.length;
     if ($('rent-overdue')) $('rent-overdue').textContent = active.filter(r => r.IsOverdue).length;
 
-    const sig = JSON.stringify(state.rentals.map(r => [r.RentalID, r.Status, r.IsOverdue]));
+    const sig = JSON.stringify(state.rentals.map(r => [r.RentalID, r.Status, r.IsOverdue, r.OverdueDays]));
     if (tbody.dataset.sig === sig) return;
     tbody.dataset.sig = sig;
 
@@ -523,7 +534,7 @@
       const returned = r.Status === 'Returned';
       const status = returned
         ? `<span class="badge badge-free">คืนแล้ว</span><div class="muted">${fmtDate(r.ReturnDate)} · ${escapeHtml(r.ReturnCondition || '-')} · คืนมัดจำ ${money(r.DepositRefunded)}</div>`
-        : `<span class="badge">กำลังเช่า</span>${r.IsOverdue ? '<span class="badge overdue">เกินกำหนด</span>' : ''}`;
+        : `<span class="badge">กำลังเช่า</span>${r.IsOverdue ? `<span class="badge overdue">เกินกำหนด${r.OverdueDays ? ' ' + r.OverdueDays + ' วัน' : ''}</span>` : ''}`;
       const action = returned ? '<span class="empty">-</span>' : `
         <div class="return-controls">
           <select class="ret-cond" aria-label="สภาพเกมตอนคืน">
@@ -691,6 +702,14 @@
       return runButton(borrow, '/api/borrow', { sessionId: borrow.dataset.borrowSession, gameId: select.value });
     }
 
+    const extend = target.closest('[data-extend-session]');
+    if (extend) {
+      return runButton(extend, '/api/extend', {
+        sessionId: extend.dataset.extendSession,
+        packageId: extend.closest('.extend-box').querySelector('.extend-pkg').value
+      });
+    }
+
     const checkout = target.closest('[data-checkout-session-id]');
     if (checkout) {
       return runButton(checkout, '/api/checkout', { sessionId: checkout.dataset.checkoutSessionId });
@@ -788,7 +807,7 @@
       me.rentals.filter(r => r.Status !== 'Returned').forEach(r => {
         html += `<div class="status-card is-rental${r.IsOverdue ? ' is-overdue' : ''}">
           <div class="status-title">🏠 เช่า <strong>${escapeHtml(r.GameName)}</strong> กลับบ้านอยู่ <span class="muted">(บิล #${r.RentalID})</span></div>
-          <div class="status-meta">คืนภายใน <strong>${fmtDate(r.DueDate)}</strong>${r.IsOverdue ? ' · <span class="badge overdue">เกินกำหนด — กรุณาคืนที่เคาน์เตอร์</span>' : ''} · มัดจำ ${money(r.Deposit)} บาท (ได้คืนตอนคืนเกม)</div>
+          <div class="status-meta">คืนภายใน <strong>${fmtDate(r.DueDate)}</strong>${r.IsOverdue ? ` · <span class="badge overdue">เกินกำหนด${r.OverdueDays ? ' ' + r.OverdueDays + ' วัน' : ''} — กรุณาคืนที่เคาน์เตอร์</span>` : ''} · มัดจำ ${money(r.Deposit)} บาท (ได้คืนตอนคืนเกม)</div>
         </div>`;
       });
       if (!html) {

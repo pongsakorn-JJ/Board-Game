@@ -101,7 +101,9 @@
         ${m.columns.map(c => `<td>${cell(c, r)}</td>`).join('')}
         <td class="admin-actions">
           <button type="button" class="btn-edit" data-edit="${esc(id)}">✏️ แก้ไข</button>
-          <button type="button" class="btn-delete" data-delete="${esc(id)}">🗑 ลบ</button>
+          ${r._noDelete
+            ? `<button type="button" class="btn-delete" disabled title="${esc(r._noDelete)}" aria-label="ลบไม่ได้: ${esc(r._noDelete)}">🔒 ลบไม่ได้</button>`
+            : `<button type="button" class="btn-delete" data-delete="${esc(id)}">🗑 ลบ</button>`}
         </td>
       </tr>`;
     }).join('');
@@ -277,12 +279,21 @@
     $('delete-impact').innerHTML = '';
     $('delete-msg').textContent = '';
     $('delete-confirm').disabled = true;
+    $('delete-confirm').hidden = false;
     dlg.showModal();
     const res = await api('GET', `/api/admin/${current}/${id}/impact`);
     if (!res.ok) {
       $('delete-target').textContent = res.message;
       return;
     }
+    if (res.blocked) {
+      $('delete-target').innerHTML = `<strong>${esc(res.title)}</strong> ลบไม่ได้`;
+      $('delete-msg').className = 'form-msg warn';
+      $('delete-msg').textContent = res.blocked;
+      $('delete-confirm').hidden = true;
+      return;
+    }
+    $('delete-confirm').hidden = false;
     $('delete-target').innerHTML = `ลบ <strong>${esc(res.title)}</strong> ออกจากฐานข้อมูล`;
     $('delete-impact').innerHTML = res.items.length
       ? `<p class="impact-head">ข้อมูลที่ผูกอยู่และจะถูกจัดการไปด้วย:</p>

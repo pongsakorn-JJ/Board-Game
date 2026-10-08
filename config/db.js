@@ -15,6 +15,7 @@ const config = {
 };
 
 let pool = null;
+let upgraded = false;
 
 // เชื่อมต่อแบบ lazy + reconnect อัตโนมัติ: ถ้า SQL Server ยังไม่พร้อมตอนเปิดเว็บ
 // แอปจะไม่ crash แค่ error เฉพาะหน้าที่เรียก แล้วลองเชื่อมใหม่ในรีเควสต์ถัดไป
@@ -22,6 +23,10 @@ async function getPool() {
   if (pool && pool.connected) return pool;
   pool = await new sql.ConnectionPool(config).connect();
   console.log('Connected to SQL Server:', config.database);
+  if (!upgraded) {          // ครั้งแรกที่ต่อได้: สร้าง/อัปเดต Function, View, Trigger, SP ให้ตรงกับเว็บ
+    upgraded = true;
+    await require('../services/dbUpgrade').runUpgrade(pool);
+  }
   return pool;
 }
 

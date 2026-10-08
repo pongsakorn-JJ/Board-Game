@@ -264,7 +264,8 @@ GO
 /* =========================================================
    4. FUNCTION (WK13)
    ========================================================= */
-CREATE FUNCTION fn_RemainingMinutes(@SessionID INT)
+-- fn_RemainingMinutes: เวลาที่เหลือ (นาที) ของการจองโต๊ะที่ยังเล่นอยู่ — ใช้ใน vw_TableStatus และหน้า "สถานะของฉัน"
+CREATE OR ALTER FUNCTION dbo.fn_RemainingMinutes(@SessionID INT)
 RETURNS INT
 AS
 BEGIN
@@ -273,6 +274,26 @@ BEGIN
     FROM tbl_session
     WHERE SessionID = @SessionID AND Status = 'Active';
     RETURN @Remain;
+END
+GO
+
+-- fn_WaitingQueueCount: จำนวนคิวที่รอโต๊ะนี้อยู่ — ใช้ตัดสินว่าจองได้ทันทีหรือต้องเข้าคิว (หน้า "จองโต๊ะ")
+CREATE OR ALTER FUNCTION dbo.fn_WaitingQueueCount(@TableID INT)
+RETURNS INT
+AS
+BEGIN
+    RETURN (SELECT COUNT(*) FROM tbl_queue WHERE TableID = @TableID AND Status = 'Waiting');
+END
+GO
+
+-- fn_RentalOverdueDays: เกินกำหนดคืนกี่วัน (คืนแล้ว/ยังไม่ถึงกำหนด = 0) — ใช้ใน vw_RentalDetail, หน้า "เช่ากลับบ้าน"
+CREATE OR ALTER FUNCTION dbo.fn_RentalOverdueDays(@DueDate DATE, @Status VARCHAR(20))
+RETURNS INT
+AS
+BEGIN
+    IF @Status = 'Returned' OR @DueDate >= CAST(GETDATE() AS DATE)
+        RETURN 0;
+    RETURN DATEDIFF(DAY, @DueDate, CAST(GETDATE() AS DATE));
 END
 GO
 
@@ -602,36 +623,55 @@ GO
    6. VIEWS — รายงาน/สถานะที่ใช้บ่อย
    ========================================================= */
 
-CREATE VIEW vw_TableStatus AS
-SELECT t.TableID, t.Zone, t.Status,
+-- vw_TableStatus: สถานะโต๊ะทุกตัว + ลูกค้าที่นั่ง + เวลาที่เหลือ + จำนวนคิวรอ — หน้า "สถานะโต๊ะ" / ฟอร์มจองโต๊ะ (เรียลไทม์)
+CREATE OR ALTER VIEW vw_TableStatus AS
+SELECT t.TableID, t.Zone, t.Capacity, t.HourlyRate, t.Status,
        s.SessionID, s.StartTime, s.ExpectedEndTime,
-       DATEDIFF(MINUTE, GETDATE(), s.ExpectedEndTime) AS MinutesLeft
+       dbo.fn_RemainingMinutes(s.SessionID) AS MinutesLeft,
+       CASE WHEN c.CustomerID IS NULL THEN NULL ELSE CONCAT(c.FirstName, ' ', c.LastName) END AS CustomerName,
+       c.Phone AS CustomerPhone,
+       dbo.fn_WaitingQueueCount(t.TableID) AS WaitingCount
 FROM tbl_table t
-LEFT JOIN tbl_session s ON t.TableID = s.TableID AND s.Status='Active';
+LEFT JOIN tbl_session s  ON t.TableID = s.TableID AND s.Status = 'Active'
+LEFT JOIN tbl_customer c ON s.CustomerID = c.CustomerID;
 GO
 
-CREATE VIEW vw_CurrentQueue AS
+-- vw_CurrentQueue: คิวที่ยังรออยู่ + รอมาแล้วกี่นาที — ส่วน "คิวรอโต๊ะ" ในหน้าสถานะโต๊ะ
+CREATE OR ALTER VIEW vw_CurrentQueue AS
 SELECT QueueID, TableID, CustomerID, CustomerName, Phone, QueueTime,
        DATEDIFF(MINUTE, QueueTime, GETDATE()) AS WaitedMinutes
 FROM tbl_queue
-WHERE Status='Waiting';
+WHERE Status = 'Waiting';
 GO
 
-CREATE VIEW vw_AvailableGames AS
+-- vw_AvailableGames: เกมที่ยังมีของว่าง
+CREATE OR ALTER VIEW vw_AvailableGames AS
 SELECT GameID, Name, AvailableQty, TotalQty, OffsiteRentalRate
 FROM tbl_boardgame
 WHERE AvailableQty > 0;
 GO
 
-CREATE VIEW vw_OverdueRentals AS
-SELECT r.RentalID, c.FirstName, c.LastName, c.Phone, g.Name AS GameName, r.DueDate
+-- vw_RentalDetail: บิลเช่ากลับบ้านพร้อมชื่อลูกค้า/เกม และจำนวนวันที่เกินกำหนด — หน้า "เช่ากลับบ้าน" และ "บัญชีของฉัน"
+CREATE OR ALTER VIEW vw_RentalDetail AS
+SELECT r.RentalID, r.CustomerID, c.FirstName, c.LastName, c.Phone,
+       r.GameID, g.Name AS GameName, r.RentalDate, r.DueDate, r.RentalFee, r.Deposit,
+       r.Status, r.ReturnDate, r.ReturnCondition, r.DepositRefunded,
+       dbo.fn_RentalOverdueDays(r.DueDate, r.Status) AS OverdueDays,
+       CASE WHEN dbo.fn_RentalOverdueDays(r.DueDate, r.Status) > 0 THEN 1 ELSE 0 END AS IsOverdue
 FROM tbl_offsiterental r
-JOIN tbl_customer c ON r.CustomerID = c.CustomerID
-JOIN tbl_boardgame g ON r.GameID = g.GameID
-WHERE r.Status='Rented' AND r.DueDate < CAST(GETDATE() AS DATE);
+JOIN tbl_customer c  ON r.CustomerID = c.CustomerID
+JOIN tbl_boardgame g ON r.GameID = g.GameID;
 GO
 
-CREATE VIEW vw_DailyRevenue AS
+-- vw_OverdueRentals: เฉพาะบิลที่เกินกำหนดคืน (ใช้ตามทวงเกม)
+CREATE OR ALTER VIEW vw_OverdueRentals AS
+SELECT RentalID, FirstName, LastName, Phone, GameName, DueDate, OverdueDays
+FROM vw_RentalDetail
+WHERE OverdueDays > 0;
+GO
+
+-- vw_DailyRevenue: รายได้รวมรายวัน (ค่าโต๊ะ + ค่าเช่ากลับบ้าน) — หน้า "รายได้"
+CREATE OR ALTER VIEW vw_DailyRevenue AS
 SELECT CAST(d.RevDate AS DATE) AS RevenueDate, SUM(d.Amount) AS TotalRevenue
 FROM (
     SELECT StartTime AS RevDate, AmountPaid AS Amount FROM tbl_session

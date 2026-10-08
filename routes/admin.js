@@ -45,7 +45,7 @@ router.get('/admin/data', requireAdmin, (req, res) => {
 // อ่านทั้งตาราง (หน้าเว็บเรียกซ้ำทุกครั้งที่มีอัปเดตเรียลไทม์ → เห็นข้อมูลจากฐานข้อมูลล่าสุดเสมอ)
 router.get('/api/admin/:entity', requireAdmin, entityParam, async (req, res) => {
   try {
-    const data = await admin.listRows(await getPool(), req.entityKey);
+    const data = await admin.listRows(await getPool(), req.entityKey, { userId: req.session.user.id });
     res.json({ ok: true, ...data });
   } catch (err) { sendError(res, err); }
 });
@@ -75,7 +75,7 @@ router.get('/api/admin/:entity/:id/impact', requireAdmin, entityParam, async (re
   const id = toId(req.params.id);
   if (!id) return res.status(400).json({ ok: false, message: 'รหัสไม่ถูกต้อง' });
   try {
-    const impact = await admin.deleteImpact(await getPool(), req.entityKey, id);
+    const impact = await admin.deleteImpact(await getPool(), req.entityKey, id, { userId: req.session.user.id });
     if (!impact) return res.status(404).json({ ok: false, message: 'ไม่พบข้อมูลนี้แล้ว (อาจถูกลบไปก่อนหน้า)' });
     res.json({ ok: true, ...impact });
   } catch (err) { sendError(res, err); }

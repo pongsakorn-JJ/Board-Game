@@ -11,10 +11,10 @@
 
 ## ขั้นตอนติดตั้ง
 
-### 1. สร้างฐานข้อมูล
-เปิด **`boardgame_cafe_sqlserver.sql`** ใน SSMS แล้วกด **Execute** — ไฟล์นี้มีครบทุกอย่างแล้ว (ตาราง, Stored Procedure, Trigger, View, ข้อมูลตัวอย่าง)
-
-> ⚠️ `boardgame_cafe_sqlserver.sql` จะ **ลบฐานข้อมูลเดิมทิ้ง** แล้วสร้างใหม่
+### 1. ฐานข้อมูล
+- **สร้างใหม่:** เปิด `boardgame_cafe_sqlserver.sql` ใน SSMS แล้วกด **Execute** (⚠️ ลบฐานเดิมทิ้งแล้วสร้างใหม่พร้อมข้อมูลตัวอย่าง)
+- **มีฐานข้อมูลอยู่แล้ว:** ไม่ต้องทำอะไร — ตอน `npm start` เชื่อมต่อครั้งแรก เว็บจะอ่าน `boardgame_cafe_sqlserver.sql` แล้วรันเฉพาะส่วน `CREATE OR ALTER` (Function / View / Trigger / Stored Procedure) ให้อัตโนมัติ **ไม่ลบข้อมูล** — ดูผลในหน้าต่าง npm start ที่บรรทัด `[db-upgrade]`
+> ⚠️ `boardgame_cafe_sqlserver.sql` จะ **ลบฐานข้อมูลเดิมทิ้ง** แล้วสร้างใหม่ ถ้าไม่อยากเสียข้อมูลให้ใช้ไฟล์อัปเดตแทน
 
 ### 2. ตั้งค่าเชื่อมต่อฐานข้อมูล
 คัดลอก `.env.example` เป็น `.env` แล้วแก้ให้ตรงกับเครื่อง:
@@ -63,7 +63,7 @@ npm start
   - เมนูบนแถบมีป้าย **"เลือกเกม"** เตือนเมื่อได้โต๊ะแล้วแต่ยังไม่ได้หยิบเกม
 
 ### ฝั่งพนักงาน (แท็บ 🛠 พนักงาน)
-- **`/dashboard` สถานะโต๊ะ** — โต๊ะ ลูกค้า เวลาที่เหลือ, เกมบนโต๊ะ (**1 โต๊ะ 1 เกม**: คืนเกม / หยิบเกม), เช็คเอาท์ (`sp_CheckOut`)
+- **`/dashboard` สถานะโต๊ะ** — โต๊ะ ลูกค้า เวลาที่เหลือ, เกมบนโต๊ะ (**1 โต๊ะ 1 เกม**: คืนเกม / หยิบเกม), **ต่อเวลา** (`sp_ExtendTime` — โต๊ะเต็ม+มีคิว = ต่อไม่ได้), เช็คเอาท์ (`sp_CheckOut`)
   - **คิวรอโต๊ะ** อยู่ใต้ตาราง — โต๊ะที่ว่างแล้วกด "เรียกคิวแรกเข้านั่ง" (`sp_SeatNextInQueue`) หรือยกเลิกคิว (`sp_CancelQueue`)
 - **`/rentals` เช่ากลับบ้าน** — บิลทั้งหมด (รวมที่ลูกค้าเช่าเอง) + ปุ่ม **คืนเกม** (สภาพเกม + ยอดคืนมัดจำ → `sp_ReturnOffsite`)
 - **`/games`**, **`/revenue` รายได้** (สรุปรายวัน + รายละเอียดทุกบิล)
@@ -78,7 +78,8 @@ npm start
 - พนักงาน**ไม่มีหน้าจองโต๊ะ/เช่า** — ลูกค้าทำเองทั้งหมด (ลูกค้า walk-in ให้สมัครสมาชิกบนเว็บก่อน)
 
 ## แก้ปัญหาที่พบบ่อย
-- **Invalid column name ... / Could not find stored procedure ...** → ฐานข้อมูลเป็นเวอร์ชันเก่า ให้รัน `boardgame_cafe_sqlserver.sql` ใหม่ใน SSMS
+- **ลบในหน้า "จัดการข้อมูล" แล้วขึ้น "ฐานข้อมูลยังเป็นเวอร์ชันเก่า"** → ปิดแล้วเปิด `npm start` ใหม่ (เว็บอัปเดตให้เอง) ถ้า `[db-upgrade]` แจ้งว่าไม่สำเร็จ ให้รัน `boardgame_cafe_sqlserver.sql` ใน SSMS
+- **Invalid column name ...** (ตาราง/คอลัมน์ไม่ครบ) → ฐานข้อมูลเก่ามาก ให้รัน `boardgame_cafe_sqlserver.sql` ใหม่ใน SSMS
 - **Cannot find module 'express-session' / 'bcryptjs'** → รัน `npm install` ใหม่
 - **เชื่อมต่อไม่ได้ (ESOCKET / ECONNREFUSED)** → ใช้ `DB_SERVER=127.0.0.1` แทน `localhost` และเช็คว่า TCP/IP เปิดใน SQL Server Configuration Manager (แก้แล้วต้อง restart service)
 - **Login failed for user 'sa'** → ตั้ง SQL Server เป็น "SQL Server and Windows Authentication mode" แล้ว restart service
@@ -98,6 +99,7 @@ Data_Base/
 ├── views/                          # หน้า EJS
 ├── public/css/style.css
 ├── public/js/realtime.js           # ฝั่งเบราว์เซอร์: อัปเดตเรียลไทม์ + ฟอร์มทั้งหมด
+├── boardgame_cafe_sqlserver.sql    # schema หลัก (ฉบับล่าสุด)
 ├── public/images/games/            # รูปประกอบเกม (SVG) — เปลี่ยนเป็นรูปถ่ายจริงได้
-└── boardgame_cafe_sqlserver.sql    # schema หลัก (ตาราง + SP + Trigger + View + ข้อมูลตัวอย่าง)
+└── services/dbUpgrade.js           # ตอนเปิดเว็บ: สร้าง/อัปเดต Function, View, Trigger, SP จากไฟล์ SQL หลัก
 ```

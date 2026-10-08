@@ -486,7 +486,7 @@ function friendlyDbError(err) {
     return 'ข้อมูลไม่ผ่านเงื่อนไขของฐานข้อมูล: ' + msg;
   }
   if (err.number === 50000) return msg;   // RAISERROR จาก Stored Procedure (ข้อความภาษาไทยที่เขียนไว้แล้ว)
-  if (err.number === 2812) return 'ฐานข้อมูลยังเป็นเวอร์ชันเก่า — รัน boardgame_cafe_sqlserver.sql ใหม่ใน SSMS (ไม่พบ Stored Procedure สำหรับลบ)';
+  if (err.number === 2812) return 'ฐานข้อมูลยังเป็นเวอร์ชันเก่า (ไม่พบ Stored Procedure สำหรับลบ) — ปิดแล้วเปิด npm start ใหม่ เว็บจะอัปเดตให้เอง ถ้ายังไม่หายให้ดูข้อความ [db-upgrade] ในหน้าต่าง npm start';
   return null;
 }
 
@@ -495,9 +495,19 @@ function getEntity(key) {
   return Object.prototype.hasOwnProperty.call(ENTITIES, key) ? ENTITIES[key] : null;
 }
 
-async function listRows(pool, key) {
+// แถวที่ลบไม่ได้ + เหตุผล (เว็บปิดปุ่มลบไว้ตั้งแต่แรก ไม่ต้องกดแล้วค่อยเจอ error)
+function deleteBlockReason(key, row, ctx = {}) {
+  if (key === 'employees') {
+    if (row.Position === 'System') return 'พนักงานระบบ "Online Booking" ลบไม่ได้ — ใช้บันทึกการจองที่ลูกค้าทำเองผ่านเว็บ (ถ้าลบ ลูกค้าจะจอง/เช่าผ่านเว็บไม่ได้)';
+    if (ctx.userId && row.EmployeeID === ctx.userId) return 'ลบบัญชีที่กำลังใช้งานอยู่ไม่ได้ — ให้พนักงานคนอื่นเป็นคนลบ';
+  }
+  return null;
+}
+
+async function listRows(pool, key, ctx) {
   const e = ENTITIES[key];
   const rows = (await pool.request().query(e.list)).recordset;
+  rows.forEach(r => { const why = deleteBlockReason(key, r, ctx); if (why) r._noDelete = why; });
   const lookups = {};
   for (const name of (e.lookups || [])) lookups[name] = (await pool.request().query(LOOKUPS[name])).recordset;
   return { rows, lookups };
@@ -557,10 +567,12 @@ async function getRow(pool, key, id) {
   return r.recordset[0] || null;
 }
 
-async function deleteImpact(pool, key, id) {
+async function deleteImpact(pool, key, id, ctx) {
   const e = ENTITIES[key];
   const row = await getRow(pool, key, id);
   if (!row) return null;
+  const blocked = deleteBlockReason(key, row, ctx);
+  if (blocked) return { title: e.rowLabel(row), items: [], blocked };
   const items = [];
   for (const it of e.impact) {
     const r = await pool.request().input('id', sql.Int, id).query(it.sql);
@@ -576,6 +588,6 @@ async function deleteRow(pool, key, id) {
 }
 
 module.exports = {
-  ENTITIES, publicMeta, getEntity, listRows, createRow, updateRow, deleteImpact, deleteRow,
+  ENTITIES, publicMeta, getEntity, listRows, deleteBlockReason, createRow, updateRow, deleteImpact, deleteRow,
   friendlyDbError, InputError
 };

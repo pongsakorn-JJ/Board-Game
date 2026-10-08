@@ -37,7 +37,7 @@ let onlineEmployeeId = null;
 async function getOnlineEmployeeId(pool) {
   if (onlineEmployeeId) return onlineEmployeeId;
   const r = await pool.request().query(`SELECT TOP 1 EmployeeID FROM tbl_employee WHERE Position = 'System' ORDER BY EmployeeID`);
-  if (!r.recordset.length) throw new Error('ไม่พบพนักงานระบบ Online Booking (ฐานข้อมูลยังเป็นเวอร์ชันเก่า — รัน boardgame_cafe_sqlserver.sql ใหม่)');
+  if (!r.recordset.length) throw new Error('ไม่พบพนักงานระบบ Online Booking (ยังไม่ได้รัน update_v4_login.sql)');
   onlineEmployeeId = r.recordset[0].EmployeeID;
   return onlineEmployeeId;
 }
@@ -51,7 +51,7 @@ async function getMeData(pool, customerId) {
     FROM tbl_customer WHERE CustomerID = @C`)).recordset[0] || null;
   const active = (await req().query(`
     SELECT TOP 1 s.SessionID, s.TableID, t.Zone, s.StartTime, s.ExpectedEndTime,
-           DATEDIFF(MINUTE, GETDATE(), s.ExpectedEndTime) AS MinutesLeft, tp.PackageName, s.AmountPaid,
+           dbo.fn_RemainingMinutes(s.SessionID) AS MinutesLeft, tp.PackageName, s.AmountPaid,
            cur.BorrowID, cur.GameID, cur.GameName, cur.BorrowTime AS GameSince
     FROM tbl_session s
     JOIN tbl_table t ON t.TableID = s.TableID
@@ -79,12 +79,11 @@ async function getMeData(pool, customerId) {
     WHERE s.CustomerID = @C
     ORDER BY s.StartTime DESC`)).recordset;
   const rentals = (await req().query(`
-    SELECT TOP 20 r.RentalID, g.Name AS GameName, r.RentalDate, r.DueDate, r.RentalFee, r.Deposit,
-           r.Status, r.ReturnDate, r.DepositRefunded,
-           CASE WHEN r.Status <> 'Returned' AND r.DueDate < CAST(GETDATE() AS DATE) THEN 1 ELSE 0 END AS IsOverdue
-    FROM tbl_offsiterental r JOIN tbl_boardgame g ON g.GameID = r.GameID
-    WHERE r.CustomerID = @C
-    ORDER BY r.RentalDate DESC`)).recordset;
+    SELECT TOP 20 RentalID, GameName, RentalDate, DueDate, RentalFee, Deposit,
+           Status, ReturnDate, DepositRefunded, OverdueDays, IsOverdue
+    FROM vw_RentalDetail
+    WHERE CustomerID = @C
+    ORDER BY RentalDate DESC`)).recordset;
   return { profile, active, queue, sessions, rentals };
 }
 
@@ -133,7 +132,7 @@ router.get('/dashboard', requireAdmin, async (req, res) => {
   }
 });
 
-// แคตตาล็อกบอร์ดเกม: รูป + รายละเอียดย่อ + วิธีเล่น + สต๊อก
+// แคตตาล็อกบอร์ดเกม: รูป + รายละเอียดย่อ + วิธีเล่น + สต๊อก (ต้องรัน update_v3 ก่อน)
 router.get('/games', async (req, res) => {
   try {
     const pool = await getPool();
@@ -196,15 +195,9 @@ router.get('/api/me', requireCustomer, async (req, res) => {
 router.get('/revenue', requireAdmin, async (req, res) => {
   try {
     const pool = await getPool();
+    // VIEW vw_DailyRevenue
     const summaryResult = await pool.request().query(`
-      SELECT CAST(RevDate AS DATE) AS RevenueDate, SUM(Amount) AS TotalRevenue
-      FROM (
-        SELECT StartTime AS RevDate, AmountPaid AS Amount FROM tbl_session
-        UNION ALL
-        SELECT RentalDate AS RevDate, RentalFee AS Amount FROM tbl_offsiterental
-      ) d
-      GROUP BY CAST(RevDate AS DATE)
-      ORDER BY CAST(RevDate AS DATE) DESC
+      SELECT RevenueDate, TotalRevenue FROM vw_DailyRevenue ORDER BY RevenueDate DESC
     `);
 
     const detailResult = await pool.request().query(`
@@ -326,8 +319,7 @@ router.post('/api/booking', requireCustomer, async (req, res) => {
     const tbl = await pool.request()
       .input('TableID', sql.Int, tableId)
       .query(`
-        SELECT t.Status,
-               (SELECT COUNT(*) FROM tbl_queue q WHERE q.TableID = t.TableID AND q.Status = 'Waiting') AS WaitingCount
+        SELECT t.Status, dbo.fn_WaitingQueueCount(t.TableID) AS WaitingCount   -- FUNCTION (update_v6)
         FROM tbl_table t
         WHERE t.TableID = @TableID
       `);
@@ -477,6 +469,39 @@ router.post('/api/queue/cancel', requireLogin, async (req, res) => {
 });
 
 // เช็คเอาท์ (เคลียร์โต๊ะ) — sp_CheckOut (คืนสต๊อกเกมทั้งหมดของโต๊ะนั้น + เปิดโต๊ะให้ว่าง)
+// ต่อเวลาโต๊ะ (Smart Extension) — sp_ExtendTime: ไม่มีโต๊ะว่างและมีคิวรออยู่ = ต่อเวลาไม่ได้
+// ใช้แพ็กเกจเวลาเป็นตัวกำหนดนาทีที่ต่อ + ค่าบริการเพิ่ม
+router.post('/api/extend', requireAdmin, async (req, res) => {
+  const sessionId = toInt(req.body.sessionId);
+  const packageId = toInt(req.body.packageId);
+  if (!sessionId) return res.status(400).json({ ok: false, message: 'ไม่พบโต๊ะที่จะต่อเวลา' });
+  if (!packageId) return res.status(400).json({ ok: false, message: 'กรุณาเลือกระยะเวลาที่ต่อ' });
+  try {
+    const pool = await getPool();
+    const pkg = await pool.request().input('PackageID', sql.Int, packageId)
+      .query(`SELECT PackageName, DurationMinutes, Price FROM tbl_timepackage WHERE PackageID = @PackageID`);
+    const p = pkg.recordset[0];
+    if (!p || !p.DurationMinutes) return res.status(400).json({ ok: false, message: 'เลือกแพ็กเกจที่มีระยะเวลา (ไม่ใช่เหมาวัน)' });
+    const sess = await pool.request().input('SessionID', sql.Int, sessionId)
+      .query(`SELECT TableID FROM tbl_session WHERE SessionID = @SessionID AND Status = 'Active'`);
+    if (!sess.recordset.length) return res.status(400).json({ ok: false, message: 'โต๊ะนี้เช็คเอาท์ไปแล้ว' });
+
+    await pool.request()
+      .input('SessionID', sql.Int, sessionId)
+      .input('AdditionalMinutes', sql.Int, p.DurationMinutes)
+      .input('AdditionalFee', sql.Decimal(10, 2), p.Price)
+      .execute('sp_ExtendTime');
+    res.json({ ok: true, message: `ต่อเวลาโต๊ะ #${sess.recordset[0].TableID} อีก ${p.DurationMinutes} นาที (+${Number(p.Price).toLocaleString('th-TH')} บาท) แล้ว` });
+    realtime.broadcastState();
+  } catch (err) {
+    if (err.number === 50000) {
+      return res.status(400).json({ ok: false, message: 'ต่อเวลาไม่ได้ — โต๊ะเต็มและมีลูกค้ารอคิวอยู่ ให้เช็คเอาท์ตามเวลาเดิม (ลูกค้าต่อคิวใหม่ได้)' });
+    }
+    console.error(err);
+    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+  }
+});
+
 router.post('/api/checkout', requireAdmin, async (req, res) => {
   const sessionId = toInt(req.body.sessionId);
   if (!sessionId) return res.status(400).json({ ok: false, message: 'ไม่พบออเดอร์ที่จะเช็คเอาท์' });
@@ -493,7 +518,7 @@ router.post('/api/checkout', requireAdmin, async (req, res) => {
         WHERE q.Status = 'Waiting' AND (q.TableID = s.TableID OR q.TableID IS NULL)
       `);
     const waiting = q.recordset[0].Waiting;
-    const extra = waiting > 0 ? ` — มีคิวรอ ${waiting} คิว เรียกเข้านั่งได้ที่หน้า "จองโต๊ะ"` : '';
+    const extra = waiting > 0 ? ` — มีคิวรอ ${waiting} คิว เรียกเข้านั่งได้ที่ส่วน "คิวรอโต๊ะ" ด้านล่าง` : '';
 
     res.json({ ok: true, message: 'เช็คเอาท์โต๊ะเรียบร้อยแล้ว' + extra });
     realtime.broadcastState();

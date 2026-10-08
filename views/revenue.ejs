@@ -1,41 +1,87 @@
 <%- include('partials/header') %>
 
-<h2 class="subheading">สรุปรายได้รายวัน</h2>
-<table class="data-table">
-  <thead>
-    <tr><th>วันที่</th><th>รายได้รวม (บาท)</th></tr>
-  </thead>
-  <tbody>
-    <% rows.forEach(r => { %>
-      <tr>
-        <td><%= new Date(r.RevenueDate).toLocaleDateString('th-TH') %></td>
-        <td><%= Number(r.TotalRevenue).toLocaleString('th-TH') %></td>
-      </tr>
-    <% }) %>
-  </tbody>
-</table>
+<%
+  const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  const dkey = (d) => new Date(d).toLocaleDateString('th-TH');
+  const todayKey = new Date().toLocaleDateString('th-TH');
+  const total = rows.reduce((s, r) => s + Number(r.TotalRevenue || 0), 0);
+  const today = rows.filter(r => dkey(r.RevenueDate) === todayKey).reduce((s, r) => s + Number(r.TotalRevenue || 0), 0);
+  const maxDay = Math.max(1, ...rows.map(r => Number(r.TotalRevenue || 0)));
+  const tableBills = details.filter(d => d.Type === 'โต๊ะ').length;
+  const rentalBills = details.length - tableBills;
+  const STATUS = {
+    Active: ['กำลังเล่น', 'badge-busy'], Completed: ['เสร็จแล้ว', ''],
+    Rented: ['กำลังเช่า', ''], Returned: ['คืนแล้ว', 'badge-free'], Overdue: ['เกินกำหนด', 'badge-busy']
+  };
+%>
 
-<h2 class="subheading">รายละเอียดรายการจอง/เช่า</h2>
+<p class="hint">รายได้ = ค่าโต๊ะที่ชำระ (tbl_session) + ค่าเช่ากลับบ้าน (tbl_offsiterental) · สรุปรายวันจาก View <code>vw_DailyRevenue</code></p>
+
+<section class="summary-cards">
+  <div class="card card-free">
+    <div class="card-value"><%= money(today) %> ฿</div>
+    <div class="card-label">รายได้วันนี้</div>
+  </div>
+  <div class="card">
+    <div class="card-value"><%= money(total) %> ฿</div>
+    <div class="card-label">รายได้รวมทั้งหมด</div>
+  </div>
+  <div class="card">
+    <div class="card-value"><%= tableBills %></div>
+    <div class="card-label">บิลค่าโต๊ะ</div>
+  </div>
+  <div class="card">
+    <div class="card-value"><%= rentalBills %></div>
+    <div class="card-label">บิลเช่ากลับบ้าน</div>
+  </div>
+</section>
+
+<h2 class="subheading">สรุปรายได้รายวัน</h2>
+<% if (rows.length === 0) { %>
+  <p class="empty">ยังไม่มีรายได้</p>
+<% } else { %>
+  <div class="table-scroll">
+    <table class="data-table revenue-days">
+      <thead>
+        <tr><th>วันที่</th><th class="num">รายได้รวม (บาท)</th><th class="bar-col">สัดส่วน</th></tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(r => { const v = Number(r.TotalRevenue || 0); %>
+          <tr class="<%= dkey(r.RevenueDate) === todayKey ? 'is-today' : '' %>">
+            <td><%= new Date(r.RevenueDate).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %>
+              <% if (dkey(r.RevenueDate) === todayKey) { %><span class="badge badge-free">วันนี้</span><% } %></td>
+            <td class="num"><strong><%= money(v) %></strong></td>
+            <td class="bar-col"><div class="rev-bar" aria-hidden="true"><span style="width: <%= Math.max(2, Math.round(v / maxDay * 100)) %>%"></span></div></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<h2 class="subheading">รายละเอียดรายการจอง / เช่า</h2>
 <% if (details.length === 0) { %>
   <p class="empty">ยังไม่มีรายการ</p>
 <% } else { %>
-  <table class="data-table">
-    <thead>
-      <tr><th>ประเภท</th><th>วันที่/เวลา</th><th>รายละเอียด</th><th>ลูกค้า</th><th>จำนวนเงิน (บาท)</th><th>สถานะ</th></tr>
-    </thead>
-    <tbody>
-      <% details.forEach(d => { %>
-        <tr>
-          <td><span class="badge"><%= d.Type %></span></td>
-          <td><%= new Date(d.TxnDate).toLocaleString('th-TH') %></td>
-          <td><%= d.Detail %></td>
-          <td><%= d.CustomerName %></td>
-          <td><%= Number(d.Amount).toLocaleString('th-TH') %></td>
-          <td><%= d.Status %></td>
-        </tr>
-      <% }) %>
-    </tbody>
-  </table>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th>ประเภท</th><th>วันที่ / เวลา</th><th>รายละเอียด</th><th>ลูกค้า</th><th class="num">จำนวนเงิน (บาท)</th><th>สถานะ</th></tr>
+      </thead>
+      <tbody>
+        <% details.forEach(d => { const st = STATUS[d.Status] || [d.Status, '']; %>
+          <tr>
+            <td><span class="badge <%= d.Type === 'โต๊ะ' ? 'type-table' : 'type-rental' %>"><%= d.Type === 'โต๊ะ' ? '🪑 โต๊ะ' : '🏠 เช่ากลับบ้าน' %></span></td>
+            <td><%= new Date(d.TxnDate).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' }) %></td>
+            <td><%= d.Detail %></td>
+            <td><%= d.CustomerName %></td>
+            <td class="num"><%= money(d.Amount) %></td>
+            <td><span class="badge <%= st[1] %>"><%= st[0] %></span></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
 <% } %>
 
 <%- include('partials/footer') %>
