@@ -1,4 +1,4 @@
-# Board Game Cafe - Web
+# Bluff Chain (บลัฟเชน) — ระบบจัดการบอร์ดเกมคาเฟ่
 
 เว็บจัดการบอร์ดเกมคาเฟ่ (Node.js + Express + SQL Server + Socket.IO)
 เชื่อมต่อกับฐานข้อมูล `BoardGameCafeDB` ตัวเดียวกับที่ใช้ทำ coursework บน SQL Server โดยตรง
@@ -6,18 +6,18 @@
 
 ## สิ่งที่ต้องมีก่อนเริ่ม
 - Node.js (แนะนำ v18+)
-- SQL Server ที่มีฐานข้อมูล `BoardGameCafeDB` (รัน `boardgame_cafe_sqlserver.sql` แล้ว)
+- SQL Server ที่มีฐานข้อมูล `BoardGameCafeDB` (รัน `database/boardgame_cafe_sqlserver.sql` แล้ว)
 - เปิดใช้งาน **SQL Server Authentication** (mixed mode) และรู้รหัสผ่าน `sa`
 
 ## ขั้นตอนติดตั้ง
 
 ### 1. ฐานข้อมูล
-- **สร้างใหม่:** เปิด `boardgame_cafe_sqlserver.sql` ใน SSMS แล้วกด **Execute** (⚠️ ลบฐานเดิมทิ้งแล้วสร้างใหม่พร้อมข้อมูลตัวอย่าง)
-- **มีฐานข้อมูลอยู่แล้ว:** ไม่ต้องทำอะไร — ตอน `npm start` เชื่อมต่อครั้งแรก เว็บจะอ่าน `boardgame_cafe_sqlserver.sql` แล้วรันเฉพาะส่วน `CREATE OR ALTER` (Function / View / Trigger / Stored Procedure) ให้อัตโนมัติ **ไม่ลบข้อมูล** — ดูผลในหน้าต่าง npm start ที่บรรทัด `[db-upgrade]`
-> ⚠️ `boardgame_cafe_sqlserver.sql` จะ **ลบฐานข้อมูลเดิมทิ้ง** แล้วสร้างใหม่ ถ้าไม่อยากเสียข้อมูลให้ใช้ไฟล์อัปเดตแทน
+- **สร้างใหม่:** เปิด `database/boardgame_cafe_sqlserver.sql` ใน SSMS แล้วกด **Execute** (⚠️ ลบฐานเดิมทิ้งแล้วสร้างใหม่พร้อมข้อมูลตัวอย่าง)
+- **มีฐานข้อมูลอยู่แล้ว:** ไม่ต้องทำอะไร — ตอน `npm start` เชื่อมต่อครั้งแรก เว็บจะอ่าน `database/boardgame_cafe_sqlserver.sql` แล้วรันเฉพาะส่วน `CREATE OR ALTER` (Function / View / Trigger / Stored Procedure) ให้อัตโนมัติ **ไม่ลบข้อมูล** — ดูผลในหน้าต่าง npm start ที่บรรทัด `[db-upgrade]`
+> ⚠️ รันไฟล์นี้ใน SSMS = **ลบฐานข้อมูลเดิมทิ้ง** แล้วสร้างใหม่ ถ้าไม่อยากเสียข้อมูล ไม่ต้องรัน ให้เว็บอัปเดตเองตอน `npm start`
 
 ### 2. ตั้งค่าเชื่อมต่อฐานข้อมูล
-คัดลอก `.env.example` เป็น `.env` แล้วแก้ให้ตรงกับเครื่อง:
+ในโฟลเดอร์ `backend/` คัดลอก `.env.example` เป็น `.env` แล้วแก้ให้ตรงกับเครื่อง:
 ```
 DB_SERVER=127.0.0.1
 DB_USER=sa
@@ -30,8 +30,9 @@ DB_NAME=BoardGameCafeDB
 SESSION_SECRET=ข้อความสุ่มยาวๆ
 ```
 
-### 3. ติดตั้งและรัน
+### 3. ติดตั้งและรัน (ในโฟลเดอร์ backend)
 ```
+cd backend
 npm install
 npm start
 ```
@@ -78,28 +79,45 @@ npm start
 - พนักงาน**ไม่มีหน้าจองโต๊ะ/เช่า** — ลูกค้าทำเองทั้งหมด (ลูกค้า walk-in ให้สมัครสมาชิกบนเว็บก่อน)
 
 ## แก้ปัญหาที่พบบ่อย
-- **ลบในหน้า "จัดการข้อมูล" แล้วขึ้น "ฐานข้อมูลยังเป็นเวอร์ชันเก่า"** → ปิดแล้วเปิด `npm start` ใหม่ (เว็บอัปเดตให้เอง) ถ้า `[db-upgrade]` แจ้งว่าไม่สำเร็จ ให้รัน `boardgame_cafe_sqlserver.sql` ใน SSMS
-- **Invalid column name ...** (ตาราง/คอลัมน์ไม่ครบ) → ฐานข้อมูลเก่ามาก ให้รัน `boardgame_cafe_sqlserver.sql` ใหม่ใน SSMS
-- **Cannot find module 'express-session' / 'bcryptjs'** → รัน `npm install` ใหม่
+- **ลบในหน้า "จัดการข้อมูล" แล้วขึ้น "ฐานข้อมูลยังเป็นเวอร์ชันเก่า"** → ปิดแล้วเปิด `npm start` ใหม่ (เว็บอัปเดตให้เอง) ถ้า `[db-upgrade]` แจ้งว่าไม่สำเร็จ ให้รัน `database/boardgame_cafe_sqlserver.sql` ใน SSMS
+- **Invalid column name ...** (ตาราง/คอลัมน์ไม่ครบ) → ฐานข้อมูลเก่ามาก ให้รัน `database/boardgame_cafe_sqlserver.sql` ใหม่ใน SSMS
+- **Cannot find module ...** → ต้อง `cd backend` ก่อน แล้วรัน `npm install` ใหม่ (npm ต้องรันในโฟลเดอร์ที่มี package.json)
 - **เชื่อมต่อไม่ได้ (ESOCKET / ECONNREFUSED)** → ใช้ `DB_SERVER=127.0.0.1` แทน `localhost` และเช็คว่า TCP/IP เปิดใน SQL Server Configuration Manager (แก้แล้วต้อง restart service)
 - **Login failed for user 'sa'** → ตั้ง SQL Server เป็น "SQL Server and Windows Authentication mode" แล้ว restart service
-- **ชื่อ instance ไม่ใช่ default** → ใส่ `DB_SERVER=localhost\\SQLEXPRESS` ใน .env
+- **ชื่อ instance ไม่ใช่ default** → ใส่ `DB_SERVER=localhost\\SQLEXPRESS` ใน `backend/.env`
 
 ## โครงสร้างโปรเจกต์
+แยกเป็น 3 ส่วน: **frontend** (หน้าเว็บที่ผู้ใช้เห็น) · **backend** (เซิร์ฟเวอร์ Node.js) · **database** (SQL Server)
 ```
 Data_Base/
-├── server.js                       # Express + HTTP server + Socket.IO
-├── config/db.js                    # SQL Server connection pool (reconnect อัตโนมัติ)
-├── routes/index.js                 # หน้าเว็บ + API (จองโต๊ะ/คิว/เช่า/คืน/หยิบเกม)
-├── routes/admin.js                 # หน้า/API จัดการข้อมูล (เพิ่ม/แก้ไข/ลบ) — แอดมินเท่านั้น
-├── services/adminData.js           # นิยามตาราง ฟอร์ม และการตรวจค่า ของหน้าจัดการข้อมูล
-├── routes/auth.js                  # login / สมัครสมาชิก / logout / เปลี่ยนรหัสผ่าน
-├── middleware/auth.js              # กันสิทธิ์: requireLogin / requireAdmin / requireCustomer
-├── services/realtime.js            # ดึงสถานะรวม + broadcast ผ่าน Socket.IO ทุก 3 วินาที
-├── views/                          # หน้า EJS
-├── public/css/style.css
-├── public/js/realtime.js           # ฝั่งเบราว์เซอร์: อัปเดตเรียลไทม์ + ฟอร์มทั้งหมด
-├── boardgame_cafe_sqlserver.sql    # schema หลัก (ฉบับล่าสุด)
-├── public/images/games/            # รูปประกอบเกม (SVG) — เปลี่ยนเป็นรูปถ่ายจริงได้
-└── services/dbUpgrade.js           # ตอนเปิดเว็บ: สร้าง/อัปเดต Function, View, Trigger, SP จากไฟล์ SQL หลัก
+├── frontend/                            # ===== FRONTEND: ส่วนที่แสดงในเบราว์เซอร์ =====
+│   ├── views/                           # หน้าเว็บ EJS (login, booking, dashboard, admin-data ...)
+│   │   └── partials/                    # header / footer ที่ทุกหน้าใช้ร่วมกัน
+│   └── public/                          # ไฟล์ static ที่เบราว์เซอร์โหลดตรง
+│       ├── css/style.css                # ธีมมืดทั้งเว็บ
+│       ├── js/realtime.js               # อัปเดตเรียลไทม์ + ฟอร์มทั้งหมด
+│       ├── js/admin-data.js             # หน้าจัดการข้อมูล (เพิ่ม/แก้ไข/ลบ)
+│       ├── js/bg-intro.js, sparkle.js   # พื้นหลังวิดีโอวนลูป + ประกายวิบวับ (หน้า login/สมัคร)
+│       ├── images/brand/                # โลโก้ ไอคอน รูปพื้นหลัง
+│       ├── images/games/                # รูปประกอบเกม (SVG)
+│       ├── video/                       # วิดีโอพื้นหลัง (mp4 + webm)
+│       └── fonts/                       # ฟอนต์ Kanit + IBM Plex Sans Thai
+│
+├── backend/                             # ===== BACKEND: Node.js + Express + Socket.IO =====
+│   ├── server.js                        # จุดเริ่มโปรแกรม (npm start) — เสิร์ฟ frontend/ + API
+│   ├── package.json                     # รายการไลบรารี (npm install ที่นี่)
+│   ├── .env.example                     # ตัวอย่างค่าเชื่อมต่อฐานข้อมูล → คัดลอกเป็น .env
+│   ├── config/db.js                     # เชื่อมต่อ SQL Server (reconnect อัตโนมัติ)
+│   ├── middleware/auth.js               # กันสิทธิ์: requireLogin / requireAdmin / requireCustomer
+│   ├── routes/auth.js                   # login / สมัครสมาชิก / logout / เปลี่ยนรหัสผ่าน
+│   ├── routes/index.js                  # หน้าเว็บ + API (จองโต๊ะ/คิว/เช่า/คืน/หยิบเกม)
+│   ├── routes/admin.js                  # หน้า/API จัดการข้อมูล — แอดมินเท่านั้น
+│   ├── services/adminData.js            # นิยามตาราง ฟอร์ม และการตรวจค่า ของหน้าจัดการข้อมูล
+│   ├── services/realtime.js             # ดึงสถานะรวม + broadcast ผ่าน Socket.IO ทุก 3 วินาที
+│   └── services/dbUpgrade.js            # ตอนเปิดเว็บ: สร้าง/อัปเดต Function, View, Trigger, SP จาก database/
+│
+├── database/                            # ===== DATABASE: SQL Server =====
+│   └── boardgame_cafe_sqlserver.sql     # สร้างฐาน BoardGameCafeDB ทั้งหมด: ตาราง ข้อมูลตัวอย่าง
+│                                        #   Function / View / Trigger / Stored Procedure
+└── README.md
 ```
