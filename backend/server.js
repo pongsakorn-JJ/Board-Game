@@ -1,5 +1,6 @@
+const path = require('path');
 const express = require('express');
-require('dotenv').config();
+require('dotenv').config({ path: path.join(__dirname, '.env') });   // อ่าน backend/.env เสมอ ไม่ว่าจะรันจากโฟลเดอร์ไหน
 const http = require('http');
 const crypto = require('crypto');
 const session = require('express-session');
@@ -15,8 +16,10 @@ const adminRoutes = require('./routes/admin');
 const realtime = require('./services/realtime');
 
 app.set('view engine', 'ejs');
-app.set('views', __dirname + '/views');
-app.use(express.static(__dirname + '/public'));
+// Frontend อยู่โฟลเดอร์ frontend/ (หน้าเว็บ .ejs + ไฟล์ css/js/รูป/วิดีโอ)
+const FRONTEND = path.join(__dirname, '..', 'frontend');
+app.set('views', path.join(FRONTEND, 'views'));
+app.use(express.static(path.join(FRONTEND, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));   // ฟอร์ม login / สมัครสมาชิก
 

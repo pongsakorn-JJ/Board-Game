@@ -5,7 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const SQL_FILE = path.join(__dirname, '..', 'boardgame_cafe_sqlserver.sql');
+const SQL_FILE = path.join(__dirname, '..', '..', 'database', 'boardgame_cafe_sqlserver.sql');   // database/
 
 function upgradeBatches() {
   const text = fs.readFileSync(SQL_FILE, 'utf8').replace(/^﻿/, '');
