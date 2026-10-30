@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
-  <title>เกิดข้อผิดพลาด | Bluff Chain</title>
+  <title><%= t('เกิดข้อผิดพลาด') %> | Bluff Chain</title>
   <link rel="icon" type="image/png" href="/images/brand/favicon.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
   <meta name="theme-color" content="#0b0d14">
@@ -10,14 +10,13 @@
 </head>
 <body>
   <main class="container">
-    <h1>เชื่อมต่อฐานข้อมูลไม่ได้</h1>
+    <h1><%= t('เชื่อมต่อฐานข้อมูลไม่ได้') %></h1>
     <p><%= message %></p>
     <pre><%= error %></pre>
     <% if (/Invalid column name|Invalid object name|Cannot find either column "dbo"|is not a recognized built-in function|Could not find stored procedure|sp_CancelQueue|@QueueID|@CustomerID|Online Booking/i.test(error || '')) { %>
-      <p class="form-msg error"><strong>ฐานข้อมูลยังเป็นเวอร์ชันเก่า:</strong> ปิดแล้วเปิด <code>npm start</code> ใหม่ก่อน (เว็บอัปเดต Function/View/SP ให้เอง — ดูบรรทัด <code>[db-upgrade]</code>) ถ้ายังไม่หาย ให้เปิด <code>boardgame_cafe_sqlserver.sql</code> ใน SSMS แล้วกด Execute (⚠️ สร้างฐานข้อมูลใหม่ ข้อมูลเดิมหาย)</p>
+      <p class="form-msg error"><strong><%= t('ฐานข้อมูลยังเป็นเวอร์ชันเก่า:') %></strong> <%- t('ปิดแล้วเปิด {cmd} ใหม่ก่อน (เว็บอัปเดต Function/View/SP ให้เอง — ดูบรรทัด {log}) ถ้ายังไม่หาย ให้เปิด {file} ใน SSMS แล้วกด Execute (⚠️ สร้างฐานข้อมูลใหม่ ข้อมูลเดิมหาย)', { cmd: '<code>npm start</code>', log: '<code>[db-upgrade]</code>', file: '<code>boardgame_cafe_sqlserver.sql</code>' }) %></p>
     <% } else { %>
-      <p>ตรวจสอบว่า SQL Server เปิดอยู่ (เปิด SQL Server Configuration Manager เช็คว่า service ทำงาน + เปิด TCP/IP protocol)
-         และค่าใน .env ถูกต้อง (DB_SERVER, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME)</p>
+      <p><%= t('ตรวจสอบว่า SQL Server เปิดอยู่ (เปิด SQL Server Configuration Manager เช็คว่า service ทำงาน + เปิด TCP/IP protocol) และค่าใน .env ถูกต้อง (DB_SERVER, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME)') %></p>
     <% } %>
   </main>
 </body>

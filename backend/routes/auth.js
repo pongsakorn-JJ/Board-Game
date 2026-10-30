@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const { requireLogin } = require('../middleware/auth');
+const { t, tr } = require('../services/i18n');
 
 const PHONE_RE = /^0\d{8,9}$/;      // เบอร์ไทย 9-10 หลัก ขึ้นต้นด้วย 0
 const MIN_PASSWORD = 6;
@@ -68,7 +69,7 @@ router.post('/login', async (req, res) => {
   }
   const key = lockKey(req, as, identifier.toLowerCase());
   const wait = isLocked(key);
-  if (wait) return fail(`ใส่รหัสผ่านผิดหลายครั้ง กรุณารอ ${wait} วินาทีแล้วลองใหม่`, 429);
+  if (wait) return fail(t('ใส่รหัสผ่านผิดหลายครั้ง กรุณารอ {wait} วินาทีแล้วลองใหม่', { wait }), 429);
 
   try {
     const pool = await getPool();
@@ -111,7 +112,7 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error(err);
     const hint = /Invalid column name/.test(err.message) ? ' (ฐานข้อมูลยังเป็นเวอร์ชันเก่า — รัน boardgame_cafe_sqlserver.sql ใหม่)' : '';
-    fail('เข้าสู่ระบบไม่สำเร็จ: ' + err.message + hint, 500);
+    fail(t('เข้าสู่ระบบไม่สำเร็จ: ') + tr(err.message) + hint, 500);
   }
 });
 
@@ -133,7 +134,7 @@ router.post('/register', async (req, res) => {
 
   if (!values.firstName || !values.lastName) return fail('กรอกชื่อและนามสกุล');
   if (!PHONE_RE.test(values.phone)) return fail('เบอร์โทรต้องเป็นตัวเลข 9-10 หลัก ขึ้นต้นด้วย 0 (เช่น 0812345678)');
-  if (password.length < MIN_PASSWORD) return fail(`รหัสผ่านต้องมีอย่างน้อย ${MIN_PASSWORD} ตัวอักษร`);
+  if (password.length < MIN_PASSWORD) return fail(t('รหัสผ่านต้องมีอย่างน้อย {MIN_PASSWORD} ตัวอักษร', { MIN_PASSWORD }));
   if (password !== confirm) return fail('ยืนยันรหัสผ่านไม่ตรงกัน');
 
   try {
@@ -177,7 +178,7 @@ router.post('/account/password', requireLogin, async (req, res) => {
   const confirm = String(req.body.confirm || '');
   const render = (error, success, status = 200) => res.status(status).render('password', { title: 'เปลี่ยนรหัสผ่าน', error, success });
 
-  if (password.length < MIN_PASSWORD) return render(`รหัสผ่านใหม่ต้องมีอย่างน้อย ${MIN_PASSWORD} ตัวอักษร`, null, 400);
+  if (password.length < MIN_PASSWORD) return render(t('รหัสผ่านใหม่ต้องมีอย่างน้อย {MIN_PASSWORD} ตัวอักษร', { MIN_PASSWORD }), null, 400);
   if (password !== confirm) return render('ยืนยันรหัสผ่านใหม่ไม่ตรงกัน', null, 400);
 
   try {
@@ -196,7 +197,7 @@ router.post('/account/password', requireLogin, async (req, res) => {
     render(null, 'เปลี่ยนรหัสผ่านเรียบร้อยแล้ว');
   } catch (err) {
     console.error(err);
-    render('เปลี่ยนรหัสผ่านไม่สำเร็จ: ' + err.message, null, 500);
+    render(t('เปลี่ยนรหัสผ่านไม่สำเร็จ: ') + tr(err.message), null, 500);
   }
 });
 

@@ -14,6 +14,7 @@ const authRoutes = require('./routes/auth');
 const indexRoutes = require('./routes/index');
 const adminRoutes = require('./routes/admin');
 const realtime = require('./services/realtime');
+const i18n = require('./services/i18n');
 
 app.set('view engine', 'ejs');
 // Frontend อยู่โฟลเดอร์ frontend/ (หน้าเว็บ .ejs + ไฟล์ css/js/รูป/วิดีโอ)
@@ -40,6 +41,10 @@ app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
+
+// ภาษา ไทย/อังกฤษ: อ่านจาก cookie "lang" (เปลี่ยนที่ปุ่ม TH | EN มุมบนขวา)
+app.use(i18n.middleware);
+app.get('/lang/:code', i18n.switchRoute);
 
 app.use('/', authRoutes);
 app.use('/', indexRoutes);

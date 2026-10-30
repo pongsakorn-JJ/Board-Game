@@ -8,6 +8,7 @@
    ========================================================= */
 const bcrypt = require('bcryptjs');
 const { sql } = require('../config/db');
+const { t, tr } = require('./i18n');
 
 const PHONE_RE = /^0\d{8,9}$/;
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2})?$/;
@@ -34,7 +35,7 @@ const ENTITIES = {
              (SELECT COUNT(*) FROM tbl_session s WHERE s.CustomerID = c.CustomerID) AS SessionCount,
              (SELECT COUNT(*) FROM tbl_offsiterental r WHERE r.CustomerID = c.CustomerID) AS RentalCount
       FROM tbl_customer c ORDER BY c.CustomerID DESC`,
-    rowLabel: (r) => `ลูกค้า #${r.CustomerID} ${r.FirstName} ${r.LastName}`,
+    rowLabel: (r) => t('ลูกค้า #{CustomerID} {FirstName} {LastName}', { CustomerID: r.CustomerID, FirstName: r.FirstName, LastName: r.LastName }),
     columns: [
       { key: 'CustomerID', label: '#', fmt: 'id' },
       { key: 'FirstName', label: 'ชื่อ' }, { key: 'LastName', label: 'นามสกุล' },
@@ -76,7 +77,7 @@ const ENTITIES = {
              (SELECT COUNT(*) FROM tbl_session s WHERE s.EmployeeID = e.EmployeeID) AS SessionCount,
              (SELECT COUNT(*) FROM tbl_offsiterental r WHERE r.EmployeeID = e.EmployeeID) AS RentalCount
       FROM tbl_employee e ORDER BY e.EmployeeID`,
-    rowLabel: (r) => `พนักงาน #${r.EmployeeID} ${r.Name}`,
+    rowLabel: (r) => t('พนักงาน #{EmployeeID} {Name}', { EmployeeID: r.EmployeeID, Name: r.Name }),
     columns: [
       { key: 'EmployeeID', label: '#', fmt: 'id' },
       { key: 'Name', label: 'ชื่อ' }, { key: 'Position', label: 'ตำแหน่ง' }, { key: 'Phone', label: 'เบอร์โทร' },
@@ -110,7 +111,7 @@ const ENTITIES = {
       SELECT c.CategoryID, c.CategoryName,
              (SELECT COUNT(*) FROM tbl_boardgame g WHERE g.CategoryID = c.CategoryID) AS GameCount
       FROM tbl_gamecategory c ORDER BY c.CategoryID`,
-    rowLabel: (r) => `หมวด "${r.CategoryName}"`,
+    rowLabel: (r) => t('หมวด "{CategoryName}"', { CategoryName: r.CategoryName }),
     columns: [
       { key: 'CategoryID', label: '#', fmt: 'id' },
       { key: 'CategoryName', label: 'ชื่อหมวด' },
@@ -133,7 +134,7 @@ const ENTITIES = {
              g.ImageUrl, g.PlayTime, g.ShortDescription, g.HowToPlay
       FROM tbl_boardgame g LEFT JOIN tbl_gamecategory c ON c.CategoryID = g.CategoryID
       ORDER BY g.GameID`,
-    rowLabel: (r) => `บอร์ดเกม "${r.Name}"`,
+    rowLabel: (r) => t('บอร์ดเกม "{Name}"', { Name: r.Name }),
     columns: [
       { key: 'GameID', label: '#', fmt: 'id' },
       { key: 'ImageUrl', label: 'รูป', fmt: 'img' },
@@ -181,7 +182,7 @@ const ENTITIES = {
              (SELECT COUNT(*) FROM tbl_session s WHERE s.TableID = t.TableID) AS SessionCount,
              (SELECT COUNT(*) FROM tbl_queue q WHERE q.TableID = t.TableID AND q.Status = 'Waiting') AS Waiting
       FROM tbl_table t ORDER BY t.TableID`,
-    rowLabel: (r) => `โต๊ะ #${r.TableID}`,
+    rowLabel: (r) => t('โต๊ะ #{TableID}', { TableID: r.TableID }),
     columns: [
       { key: 'TableID', label: 'โต๊ะ', fmt: 'id' },
       { key: 'Zone', label: 'โซน' },
@@ -210,7 +211,7 @@ const ENTITIES = {
       SELECT p.PackageID, p.PackageName, p.DurationMinutes, p.Price,
              (SELECT COUNT(*) FROM tbl_session s WHERE s.PackageID = p.PackageID) AS SessionCount
       FROM tbl_timepackage p ORDER BY p.PackageID`,
-    rowLabel: (r) => `แพ็กเกจ "${r.PackageName}"`,
+    rowLabel: (r) => t('แพ็กเกจ "{PackageName}"', { PackageName: tr(r.PackageName) }),
     columns: [
       { key: 'PackageID', label: '#', fmt: 'id' },
       { key: 'PackageName', label: 'ชื่อแพ็กเกจ' },
@@ -248,7 +249,7 @@ const ENTITIES = {
       JOIN tbl_employee e ON e.EmployeeID = s.EmployeeID
       LEFT JOIN tbl_customer c ON c.CustomerID = s.CustomerID
       ORDER BY s.SessionID DESC`,
-    rowLabel: (r) => `การจองโต๊ะ #${r.SessionID} (โต๊ะ #${r.TableID} — ${r.CustomerName})`,
+    rowLabel: (r) => t('การจองโต๊ะ #{SessionID} (โต๊ะ #{TableID} — {CustomerName})', { SessionID: r.SessionID, TableID: r.TableID, CustomerName: r.CustomerName }),
     columns: [
       { key: 'SessionID', label: 'บิล', fmt: 'id' },
       { key: 'TableID', label: 'โต๊ะ', fmt: 'table' },
@@ -280,7 +281,7 @@ const ENTITIES = {
       SELECT TOP 300 q.QueueID, q.TableID, q.CustomerName, q.Phone, q.Status,
              CONVERT(varchar(16), q.QueueTime, 120) AS QueueTime
       FROM tbl_queue q ORDER BY CASE WHEN q.Status = 'Waiting' THEN 0 ELSE 1 END, q.QueueID DESC`,
-    rowLabel: (r) => `คิว #${r.QueueID} (${r.CustomerName})`,
+    rowLabel: (r) => t('คิว #{QueueID} ({CustomerName})', { QueueID: r.QueueID, CustomerName: r.CustomerName }),
     columns: [
       { key: 'QueueID', label: 'คิว', fmt: 'id' },
       { key: 'TableID', label: 'รอโต๊ะ', fmt: 'table' },
@@ -312,7 +313,7 @@ const ENTITIES = {
       JOIN tbl_customer c ON c.CustomerID = r.CustomerID
       JOIN tbl_boardgame g ON g.GameID = r.GameID
       ORDER BY r.RentalID DESC`,
-    rowLabel: (r) => `บิลเช่า #${r.RentalID} (${r.GameName} — ${r.CustomerName})`,
+    rowLabel: (r) => t('บิลเช่า #{RentalID} ({GameName} — {CustomerName})', { RentalID: r.RentalID, GameName: r.GameName, CustomerName: r.CustomerName }),
     columns: [
       { key: 'RentalID', label: 'บิล', fmt: 'id' },
       { key: 'CustomerName', label: 'ลูกค้า', sub: 'Phone' },
@@ -368,47 +369,47 @@ function parseFields(entity, body, mode) {
 
     if (raw === '') {
       if (f.type === 'password') continue;                         // ไม่กรอก = ไม่เปลี่ยน
-      if (f.required) throw new InputError(`กรุณากรอก "${f.label}"`, f.name);
+      if (f.required) throw new InputError(t('กรุณากรอก "{label}"', { label: tr(f.label) }), f.name);
       values[f.name] = null;
       continue;
     }
-    if (f.maxLength && raw.length > f.maxLength) throw new InputError(`"${f.label}" ยาวเกิน ${f.maxLength} ตัวอักษร`, f.name);
-    if (f.minLength && raw.length < f.minLength) throw new InputError(`"${f.label}" ต้องยาวอย่างน้อย ${f.minLength} ตัวอักษร`, f.name);
-    if (f.pattern && !f.pattern.test(raw)) throw new InputError(f.patternMsg || `"${f.label}" รูปแบบไม่ถูกต้อง`, f.name);
+    if (f.maxLength && raw.length > f.maxLength) throw new InputError(t('"{label}" ยาวเกิน {maxLength} ตัวอักษร', { label: tr(f.label), maxLength: f.maxLength }), f.name);
+    if (f.minLength && raw.length < f.minLength) throw new InputError(t('"{label}" ต้องยาวอย่างน้อย {minLength} ตัวอักษร', { label: tr(f.label), minLength: f.minLength }), f.name);
+    if (f.pattern && !f.pattern.test(raw)) throw new InputError(f.patternMsg || t('"{label}" รูปแบบไม่ถูกต้อง', { label: tr(f.label) }), f.name);
 
     switch (f.type) {
       case 'int': {
-        if (!/^-?\d+$/.test(raw)) throw new InputError(`"${f.label}" ต้องเป็นจำนวนเต็ม`, f.name);
+        if (!/^-?\d+$/.test(raw)) throw new InputError(t('"{label}" ต้องเป็นจำนวนเต็ม', { label: tr(f.label) }), f.name);
         const n = parseInt(raw, 10);
-        if (f.min !== undefined && n < f.min) throw new InputError(`"${f.label}" ต้องไม่น้อยกว่า ${f.min}`, f.name);
-        if (f.max !== undefined && n > f.max) throw new InputError(`"${f.label}" ต้องไม่เกิน ${f.max}`, f.name);
+        if (f.min !== undefined && n < f.min) throw new InputError(t('"{label}" ต้องไม่น้อยกว่า {min}', { label: tr(f.label), min: f.min }), f.name);
+        if (f.max !== undefined && n > f.max) throw new InputError(t('"{label}" ต้องไม่เกิน {max}', { label: tr(f.label), max: f.max }), f.name);
         values[f.name] = n;
         break;
       }
       case 'money': {
-        if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new InputError(`"${f.label}" ต้องเป็นจำนวนเงิน ≥ 0 (ทศนิยมไม่เกิน 2 ตำแหน่ง)`, f.name);
+        if (!/^\d+(\.\d{1,2})?$/.test(raw)) throw new InputError(t('"{label}" ต้องเป็นจำนวนเงิน ≥ 0 (ทศนิยมไม่เกิน 2 ตำแหน่ง)', { label: tr(f.label) }), f.name);
         const n = Number(raw);
-        if (n > 99999999) throw new InputError(`"${f.label}" มากเกินไป`, f.name);
+        if (n > 99999999) throw new InputError(t('"{label}" มากเกินไป', { label: tr(f.label) }), f.name);
         values[f.name] = n;
         break;
       }
       case 'select': {
         if (f.options) {
-          if (!f.options.some(([v]) => v === raw)) throw new InputError(`เลือก "${f.label}" ไม่ถูกต้อง`, f.name);
+          if (!f.options.some(([v]) => v === raw)) throw new InputError(t('เลือก "{label}" ไม่ถูกต้อง', { label: tr(f.label) }), f.name);
           values[f.name] = raw;
         } else {
           const n = parseInt(raw, 10);
-          if (!Number.isFinite(n) || n <= 0) throw new InputError(`เลือก "${f.label}" ไม่ถูกต้อง`, f.name);
+          if (!Number.isFinite(n) || n <= 0) throw new InputError(t('เลือก "{label}" ไม่ถูกต้อง', { label: tr(f.label) }), f.name);
           values[f.name] = n;
         }
         break;
       }
       case 'datetime':
-        if (!DATETIME_RE.test(raw)) throw new InputError(`"${f.label}" ต้องเป็นวันที่และเวลา`, f.name);
+        if (!DATETIME_RE.test(raw)) throw new InputError(t('"{label}" ต้องเป็นวันที่และเวลา', { label: tr(f.label) }), f.name);
         values[f.name] = raw.replace(' ', 'T').slice(0, 16) + ':00';   // ISO 8601 → CAST เป็น DATETIME ได้ทุก language
         break;
       case 'date':
-        if (!DATE_RE.test(raw)) throw new InputError(`"${f.label}" ต้องเป็นวันที่`, f.name);
+        if (!DATE_RE.test(raw)) throw new InputError(t('"{label}" ต้องเป็นวันที่', { label: tr(f.label) }), f.name);
         values[f.name] = raw;
         break;
       default:
@@ -444,7 +445,7 @@ async function extraChecks(pool, key, values, mode, id) {
         .query(`SELECT TotalQty - AvailableQty AS InUse FROM tbl_boardgame WHERE GameID = @id`);
       const inUse = r.recordset.length ? r.recordset[0].InUse : 0;
       if (values.TotalQty < inUse) {
-        throw new InputError(`ตอนนี้เกมนี้ถูกหยิบ/เช่าอยู่ ${inUse} กล่อง — จำนวนทั้งหมดต้องไม่น้อยกว่า ${inUse}`, 'TotalQty');
+        throw new InputError(t('ตอนนี้เกมนี้ถูกหยิบ/เช่าอยู่ {inUse} กล่อง — จำนวนทั้งหมดต้องไม่น้อยกว่า {inUse2}', { inUse, inUse2: inUse }), 'TotalQty');
       }
     }
   }
@@ -488,7 +489,7 @@ function friendlyDbError(err) {
     if (/CK_customer_NationalID/.test(msg)) return 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก';
     if (/REFERENCE constraint/i.test(msg)) return 'ยังมีข้อมูลอื่นผูกอยู่ — ลบไม่ได้';
     if (/FOREIGN KEY/i.test(msg)) return 'ค่าที่เลือกไม่มีอยู่ในฐานข้อมูลแล้ว (อาจเพิ่งถูกลบ) — รีเฟรชแล้วเลือกใหม่';
-    return 'ข้อมูลไม่ผ่านเงื่อนไขของฐานข้อมูล: ' + msg;
+    return t('ข้อมูลไม่ผ่านเงื่อนไขของฐานข้อมูล: ') + tr(msg);
   }
   if (err.number === 50000) return msg;   // RAISERROR จาก Stored Procedure (ข้อความภาษาไทยที่เขียนไว้แล้ว)
   if (err.number === 2812) return 'ฐานข้อมูลยังเป็นเวอร์ชันเก่า (ไม่พบ Stored Procedure สำหรับลบ) — ปิดแล้วเปิด npm start ใหม่ เว็บจะอัปเดตให้เอง ถ้ายังไม่หายให้ดูข้อความ [db-upgrade] ในหน้าต่าง npm start';
@@ -520,7 +521,7 @@ async function listRows(pool, key, ctx) {
 
 async function createRow(pool, key, body) {
   const e = ENTITIES[key];
-  if (!e.canCreate) throw new InputError(`${e.label}เพิ่มจากหน้านี้ไม่ได้ — เกิดจากการจองของลูกค้าเท่านั้น`);
+  if (!e.canCreate) throw new InputError(t('{label}เพิ่มจากหน้านี้ไม่ได้ — เกิดจากการจองของลูกค้าเท่านั้น', { label: tr(e.label) }));
   const values = parseFields(e, body, 'create');
   await extraChecks(pool, key, values, 'create');
   await checkUnique(pool, e, values);

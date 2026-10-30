@@ -5,6 +5,7 @@ const { getPool } = require('../config/db');
 const realtime = require('../services/realtime');
 const admin = require('../services/adminData');
 const { requireAdmin, forgetAccount } = require('../middleware/auth');
+const { t, tr, localize } = require('../services/i18n');
 
 function toId(v) {
   const n = parseInt(v, 10);
@@ -31,12 +32,12 @@ function sendError(res, err) {
   const friendly = admin.friendlyDbError(err);
   if (friendly) return res.status(400).json({ ok: false, message: friendly });
   console.error(err);
-  res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+  res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
 }
 
 /* ---------- หน้าเว็บ ---------- */
 router.get('/admin/data', requireAdmin, (req, res) => {
-  const meta = admin.publicMeta();
+  const meta = localize(admin.publicMeta());
   const start = meta[req.query.t] ? req.query.t : 'customers';
   res.render('admin-data', { title: 'จัดการข้อมูล', metaJson: toScriptJson(meta), startEntity: start, meta });
 });
@@ -54,7 +55,7 @@ router.get('/api/admin/:entity', requireAdmin, entityParam, async (req, res) => 
 router.post('/api/admin/:entity', requireAdmin, entityParam, async (req, res) => {
   try {
     const id = await admin.createRow(await getPool(), req.entityKey, req.body || {});
-    res.json({ ok: true, id, message: `เพิ่ม${req.entity.label} #${id} ลงฐานข้อมูลแล้ว` });
+    res.json({ ok: true, id, message: t('เพิ่ม{label} #{id} ลงฐานข้อมูลแล้ว', { label: tr(req.entity.label), id }) });
     realtime.broadcastState();
   } catch (err) { sendError(res, err); }
 });
@@ -65,7 +66,7 @@ router.put('/api/admin/:entity/:id', requireAdmin, entityParam, async (req, res)
   if (!id) return res.status(400).json({ ok: false, message: 'รหัสไม่ถูกต้อง' });
   try {
     await admin.updateRow(await getPool(), req.entityKey, id, req.body || {});
-    res.json({ ok: true, message: `บันทึกการแก้ไข${req.entity.label} #${id} แล้ว` });
+    res.json({ ok: true, message: t('บันทึกการแก้ไข{label} #{id} แล้ว', { label: tr(req.entity.label), id }) });
     realtime.broadcastState();
   } catch (err) { sendError(res, err); }
 });
@@ -92,7 +93,7 @@ router.delete('/api/admin/:entity/:id', requireAdmin, entityParam, async (req, r
     await admin.deleteRow(await getPool(), req.entityKey, id);
     if (req.entityKey === 'customers') forgetAccount('customer', id);
     if (req.entityKey === 'employees') forgetAccount('admin', id);
-    res.json({ ok: true, message: `ลบ${req.entity.label} #${id} ออกจากฐานข้อมูลแล้ว` });
+    res.json({ ok: true, message: t('ลบ{label} #{id} ออกจากฐานข้อมูลแล้ว', { label: tr(req.entity.label), id }) });
     realtime.broadcastState();
   } catch (err) { sendError(res, err); }
 });

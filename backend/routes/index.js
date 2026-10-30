@@ -3,6 +3,7 @@ const router = express.Router();
 const { sql, getPool } = require('../config/db');
 const realtime = require('../services/realtime');
 const { requireLogin, requireAdmin, requireCustomer, isAdmin } = require('../middleware/auth');
+const { t, tr } = require('../services/i18n');
 
 /* ---------- helpers ---------- */
 
@@ -262,7 +263,7 @@ async function borrowGame(pool, sessionId, gameId) {
   if (current.recordset.length > 0) {
     return {
       ok: false,
-      message: `โต๊ะ #${tableId} กำลังเล่น "${current.recordset[0].Name}" อยู่ — ต้องคืนเกมนี้ก่อนถึงจะหยิบเกมใหม่ได้ (1 โต๊ะ 1 เกม)`
+      message: t('โต๊ะ #{tableId} กำลังเล่น "{Name}" อยู่ — ต้องคืนเกมนี้ก่อนถึงจะหยิบเกมใหม่ได้ (1 โต๊ะ 1 เกม)', { tableId, Name: current.recordset[0].Name })
     };
   }
 
@@ -271,7 +272,7 @@ async function borrowGame(pool, sessionId, gameId) {
     .query(`SELECT Name, AvailableQty FROM tbl_boardgame WHERE GameID = @GameID`);
   if (game.recordset.length === 0) return { ok: false, message: 'ไม่พบเกมนี้' };
   if (game.recordset[0].AvailableQty <= 0) {
-    return { ok: false, message: `"${game.recordset[0].Name}" หมดแล้ว (ถูกหยิบ/เช่าไปครบทุกกล่อง) เลือกเกมอื่น` };
+    return { ok: false, message: t('"{Name}" หมดแล้ว (ถูกหยิบ/เช่าไปครบทุกกล่อง) เลือกเกมอื่น', { Name: game.recordset[0].Name }) };
   }
 
   try {
@@ -281,14 +282,14 @@ async function borrowGame(pool, sessionId, gameId) {
       .execute('sp_BorrowGameInStore');   // trigger ตัดสต๊อก
   } catch (err) {
     if (err.number === 2601 || err.number === 2627 || /1 โต๊ะ 1 เกม|มีเกมอยู่แล้ว/.test(err.message || '')) {
-      return { ok: false, message: `โต๊ะ #${tableId} มีเกมอยู่แล้ว — ต้องคืนเกมเดิมก่อน (1 โต๊ะ 1 เกม)` };
+      return { ok: false, message: t('โต๊ะ #{tableId} มีเกมอยู่แล้ว — ต้องคืนเกมเดิมก่อน (1 โต๊ะ 1 เกม)', { tableId }) };
     }
     if (/ไม่พอ|CK_boardgame_qty/.test(err.message || '')) {
-      return { ok: false, message: `"${game.recordset[0].Name}" หมดแล้ว เลือกเกมอื่น` };
+      return { ok: false, message: t('"{Name}" หมดแล้ว เลือกเกมอื่น', { Name: game.recordset[0].Name }) };
     }
     throw err;
   }
-  return { ok: true, message: `หยิบ "${game.recordset[0].Name}" เข้าโต๊ะ #${tableId} แล้ว`, tableId };
+  return { ok: true, message: t('หยิบ "{Name}" เข้าโต๊ะ #{tableId} แล้ว', { Name: game.recordset[0].Name, tableId }), tableId };
 }
 
 // จองโต๊ะเล่นที่ร้าน (ลูกค้าจองเองเท่านั้น) — ผูกกับบัญชีลูกค้าเสมอ, พนักงานในบิล = "Online Booking"
@@ -313,7 +314,7 @@ router.post('/api/booking', requireCustomer, async (req, res) => {
       SELECT (SELECT TOP 1 TableID FROM tbl_session WHERE CustomerID = @C AND Status = 'Active') AS ActiveTable,
              (SELECT COUNT(*) FROM tbl_queue WHERE CustomerID = @C AND Status = 'Waiting') AS QueueCount`);
     const { ActiveTable, QueueCount } = mine.recordset[0];
-    if (ActiveTable) return res.status(400).json({ ok: false, message: `คุณมีโต๊ะที่กำลังใช้อยู่แล้ว (โต๊ะ #${ActiveTable})` });
+    if (ActiveTable) return res.status(400).json({ ok: false, message: t('คุณมีโต๊ะที่กำลังใช้อยู่แล้ว (โต๊ะ #{ActiveTable})', { ActiveTable }) });
     if (QueueCount > 0) return res.status(400).json({ ok: false, message: 'คุณอยู่ในคิวแล้ว — ยกเลิกคิวเดิมก่อนถ้าต้องการเปลี่ยนโต๊ะ' });
 
     const tbl = await pool.request()
@@ -338,7 +339,7 @@ router.post('/api/booking', requireCustomer, async (req, res) => {
           .query(`SELECT Name, AvailableQty FROM tbl_boardgame WHERE GameID = @GameID`);
         if (g.recordset.length === 0 || g.recordset[0].AvailableQty <= 0) {
           const name = g.recordset[0] ? `"${g.recordset[0].Name}" ` : '';
-          return res.status(400).json({ ok: false, message: `เกม ${name}หมดแล้ว — เลือกเกมอื่น หรือเลือก "ยังไม่หยิบเกม"` });
+          return res.status(400).json({ ok: false, message: t('เกม {name}หมดแล้ว — เลือกเกมอื่น หรือเลือก "ยังไม่หยิบเกม"', { name }) });
         }
       }
 
@@ -354,12 +355,12 @@ router.post('/api/booking', requireCustomer, async (req, res) => {
 
         if (sessionId) {
           const price = Number(pkg.Price).toLocaleString('th-TH');
-          let message = `จองโต๊ะ #${tableId} สำเร็จ — ${pkg.PackageName} ${price} บาท ชำระที่เคาน์เตอร์ได้เลย (ออเดอร์ #${sessionId})`;
+          let message = t('จองโต๊ะ #{tableId} สำเร็จ — {PackageName} {price} บาท ชำระที่เคาน์เตอร์ได้เลย (ออเดอร์ #{sessionId})', { tableId, PackageName: tr(pkg.PackageName), price, sessionId });
           let warning = false;
           if (gameId) {
             const b = await borrowGame(pool, sessionId, gameId);
             if (b.ok) message += ` · ${b.message}`;
-            else { message += ` · แต่หยิบเกมไม่สำเร็จ: ${b.message} (แจ้งพนักงานเพื่อเลือกเกมใหม่)`; warning = true; }
+            else { message += t(' · แต่หยิบเกมไม่สำเร็จ: {message} (แจ้งพนักงานเพื่อเลือกเกมใหม่)', { message: b.message }); warning = true; }
           }
           res.json({ ok: true, action: 'checkin', warning, message });
           realtime.broadcastState();
@@ -388,7 +389,7 @@ router.post('/api/booking', requireCustomer, async (req, res) => {
     res.json({
       ok: true,
       action: 'queued',
-      message: `โต๊ะ #${tableId} ไม่ว่าง — คุณอยู่คิวที่ ${pos.recordset[0].Pos} ของโต๊ะนี้ พนักงานจะเรียกเมื่อโต๊ะว่าง`
+      message: t('โต๊ะ #{tableId} ไม่ว่าง — คุณอยู่คิวที่ {Pos} ของโต๊ะนี้ พนักงานจะเรียกเมื่อโต๊ะว่าง', { tableId, Pos: pos.recordset[0].Pos })
     });
     realtime.broadcastState();
   } catch (err) {
@@ -437,7 +438,7 @@ router.post('/api/queue/seat-next', requireAdmin, async (req, res) => {
     const who = next.recordset[0] ? `"${next.recordset[0].CustomerName}" ` : '';
     res.json({
       ok: true,
-      message: `เรียกคิว ${who}เข้านั่งโต๊ะ #${tableId} แล้ว — ${pkg.PackageName} เก็บเงิน ${Number(pkg.Price).toLocaleString('th-TH')} บาท`
+      message: t('เรียกคิว {who}เข้านั่งโต๊ะ #{tableId} แล้ว — {PackageName} เก็บเงิน {price} บาท', { who, tableId, PackageName: tr(pkg.PackageName), price: Number(pkg.Price).toLocaleString('th-TH') })
     });
     realtime.broadcastState();
   } catch (err) {
@@ -491,14 +492,14 @@ router.post('/api/extend', requireAdmin, async (req, res) => {
       .input('AdditionalMinutes', sql.Int, p.DurationMinutes)
       .input('AdditionalFee', sql.Decimal(10, 2), p.Price)
       .execute('sp_ExtendTime');
-    res.json({ ok: true, message: `ต่อเวลาโต๊ะ #${sess.recordset[0].TableID} อีก ${p.DurationMinutes} นาที (+${Number(p.Price).toLocaleString('th-TH')} บาท) แล้ว` });
+    res.json({ ok: true, message: t('ต่อเวลาโต๊ะ #{TableID} อีก {DurationMinutes} นาที (+{price} บาท) แล้ว', { TableID: sess.recordset[0].TableID, DurationMinutes: p.DurationMinutes, price: Number(p.Price).toLocaleString('th-TH') }) });
     realtime.broadcastState();
   } catch (err) {
     if (err.number === 50000) {
       return res.status(400).json({ ok: false, message: 'ต่อเวลาไม่ได้ — โต๊ะเต็มและมีลูกค้ารอคิวอยู่ ให้เช็คเอาท์ตามเวลาเดิม (ลูกค้าต่อคิวใหม่ได้)' });
     }
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 
@@ -518,13 +519,13 @@ router.post('/api/checkout', requireAdmin, async (req, res) => {
         WHERE q.Status = 'Waiting' AND (q.TableID = s.TableID OR q.TableID IS NULL)
       `);
     const waiting = q.recordset[0].Waiting;
-    const extra = waiting > 0 ? ` — มีคิวรอ ${waiting} คิว เรียกเข้านั่งได้ที่ส่วน "คิวรอโต๊ะ" ด้านล่าง` : '';
+    const extra = waiting > 0 ? t(' — มีคิวรอ {waiting} คิว เรียกเข้านั่งได้ที่ส่วน "คิวรอโต๊ะ" ด้านล่าง', { waiting }) : '';
 
-    res.json({ ok: true, message: 'เช็คเอาท์โต๊ะเรียบร้อยแล้ว' + extra });
+    res.json({ ok: true, message: t('เช็คเอาท์โต๊ะเรียบร้อยแล้ว') + extra });
     realtime.broadcastState();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 
@@ -557,7 +558,7 @@ router.post('/api/rent', requireCustomer, async (req, res) => {
       .query(`SELECT Name, AvailableQty FROM tbl_boardgame WHERE GameID = @GameID`);
     if (g.recordset.length === 0) return res.status(404).json({ ok: false, message: 'ไม่พบเกมนี้' });
     if (g.recordset[0].AvailableQty <= 0) {
-      return res.status(400).json({ ok: false, message: `"${g.recordset[0].Name}" หมดสต๊อกแล้ว เลือกเกมอื่น` });
+      return res.status(400).json({ ok: false, message: t('"{Name}" หมดสต๊อกแล้ว เลือกเกมอื่น', { Name: g.recordset[0].Name }) });
     }
 
     const c = await pool.request().input('C', sql.Int, customerId)
@@ -591,7 +592,7 @@ router.post('/api/rent', requireCustomer, async (req, res) => {
 
     res.json({
       ok: true,
-      message: `เช่า "${g.recordset[0].Name}" สำเร็จ (บิล #${rentalId}) — ชำระค่าเช่า ${fmt(RentalFee)} + มัดจำ ${fmt(Deposit)} = ${fmt(Number(RentalFee) + Number(Deposit))} บาท และรับเกมที่เคาน์เตอร์ · คืนภายใน ${d}/${m}/${y}`
+      message: t('เช่า "{Name}" สำเร็จ (บิล #{rentalId}) — ชำระค่าเช่า {rent} + มัดจำ {deposit} = {total} บาท และรับเกมที่เคาน์เตอร์ · คืนภายใน {d}/{m}/{y}', { Name: g.recordset[0].Name, rentalId, rent: fmt(RentalFee), deposit: fmt(Deposit), total: fmt(Number(RentalFee) + Number(Deposit)), d, m, y })
     });
     realtime.broadcastState();
   } catch (err) {
@@ -631,7 +632,7 @@ router.post('/api/rent/return', requireAdmin, async (req, res) => {
     const b = bill.recordset[0];
     if (b.Status === 'Returned') return res.status(400).json({ ok: false, message: 'บิลนี้คืนเกมไปแล้ว' });
     if (depositRefunded > Number(b.Deposit)) {
-      return res.status(400).json({ ok: false, message: `ยอดคืนมัดจำต้องไม่เกิน ${Number(b.Deposit).toLocaleString('th-TH')} บาท` });
+      return res.status(400).json({ ok: false, message: t('ยอดคืนมัดจำต้องไม่เกิน {max} บาท', { max: Number(b.Deposit).toLocaleString('th-TH') }) });
     }
 
     const sp = pool.request();
@@ -643,7 +644,7 @@ router.post('/api/rent/return', requireAdmin, async (req, res) => {
     const points = Math.floor(Number(b.RentalFee) / 10);
     res.json({
       ok: true,
-      message: `คืน "${b.Name}" แล้ว (สภาพ: ${condition}) — คืนมัดจำ ${depositRefunded.toLocaleString('th-TH')} บาท · ลูกค้าได้ ${points} แต้ม`
+      message: t('คืน "{Name}" แล้ว (สภาพ: {condition}) — คืนมัดจำ {refund} บาท · ลูกค้าได้ {points} แต้ม', { Name: b.Name, condition: tr(condition), refund: depositRefunded.toLocaleString('th-TH'), points })
     });
     realtime.broadcastState();
   } catch (err) {
@@ -671,7 +672,7 @@ router.post('/api/borrow', requireAdmin, async (req, res) => {
     realtime.broadcastState();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 
@@ -693,7 +694,7 @@ router.post('/api/return-game', requireAdmin, async (req, res) => {
     realtime.broadcastState();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 
@@ -721,11 +722,11 @@ router.post('/api/my/borrow', requireCustomer, async (req, res) => {
     }
     const result = await borrowGame(pool, my.SessionID, gameId);
     if (!result.ok) return res.status(400).json(result);
-    res.json({ ok: true, message: result.message + ' — รับเกมที่เคาน์เตอร์ได้เลย' });
+    res.json({ ok: true, message: result.message + t(' — รับเกมที่เคาน์เตอร์ได้เลย') });
     realtime.broadcastState();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 
@@ -752,11 +753,11 @@ router.post('/api/my/return-game', requireCustomer, async (req, res) => {
       .input('SessionID', sql.Int, my.SessionID)
       .query(`UPDATE tbl_instoreborrow SET ReturnTime = GETDATE() WHERE SessionID = @SessionID AND ReturnTime IS NULL`);
 
-    res.json({ ok: true, message: `คืน "${current.recordset[0].Name}" แล้ว — เลือกเกมใหม่ให้โต๊ะ #${my.TableID} ได้เลย (นำกล่องเกมไปคืนที่เคาน์เตอร์)` });
+    res.json({ ok: true, message: t('คืน "{Name}" แล้ว — เลือกเกมใหม่ให้โต๊ะ #{TableID} ได้เลย (นำกล่องเกมไปคืนที่เคาน์เตอร์)', { Name: current.recordset[0].Name, TableID: my.TableID }) });
     realtime.broadcastState();
   } catch (err) {
     console.error(err);
-    res.status(500).json({ ok: false, message: 'เกิดข้อผิดพลาด: ' + err.message });
+    res.status(500).json({ ok: false, message: t('เกิดข้อผิดพลาด: ') + tr(err.message) });
   }
 });
 

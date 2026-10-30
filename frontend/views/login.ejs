@@ -1,11 +1,11 @@
 <%- include('partials/header') %>
 
-<div class="auth-hero"><img src="/images/brand/logo-hd.webp" alt="Bluff Chain บลัฟเชน" width="760" height="686"></div>
+<div class="auth-hero"><img src="/images/brand/logo-hd.webp" alt="<%= t('Bluff Chain บลัฟเชน') %>" width="760" height="686"></div>
 
 <section class="auth-card">
-  <div class="mode-toggle auth-tabs" role="tablist" aria-label="เข้าสู่ระบบในฐานะ">
-    <a href="/login<%= next ? '?next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'customer' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'customer' %>">👤 ลูกค้า</a>
-    <a href="/login?as=staff<%= next ? '&next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'staff' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'staff' %>">🛠 พนักงาน</a>
+  <div class="mode-toggle auth-tabs" role="tablist" aria-label="<%= t('เข้าสู่ระบบในฐานะ') %>">
+    <a href="/login<%= next ? '?next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'customer' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'customer' %>"><i class="mi mi-user"></i> <%= t('ลูกค้า') %></a>
+    <a href="/login?as=staff<%= next ? '&next=' + encodeURIComponent(next) : '' %>" class="mode-option <%= as === 'staff' ? 'is-active' : '' %>" role="tab" aria-selected="<%= as === 'staff' %>"><i class="mi mi-shield"></i> <%= t('พนักงาน') %></a>
   </div>
 
   <% if (error) { %><p class="form-msg error auth-error" role="alert"><%= error %></p><% } %>
@@ -14,25 +14,25 @@
     <input type="hidden" name="as" value="<%= as %>">
     <input type="hidden" name="next" value="<%= next %>">
     <% if (as === 'staff') { %>
-      <label>ชื่อผู้ใช้
-        <input type="text" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="เช่น somchai">
+      <label><%= t('ชื่อผู้ใช้') %>
+        <span class="field field-user"><input type="text" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="<%= t('เช่น somchai') %>"></span>
       </label>
     <% } else { %>
-      <label>เบอร์โทร
-        <input type="tel" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="เช่น 0812345678" inputmode="numeric" maxlength="10">
+      <label><%= t('เบอร์โทร') %>
+        <span class="field field-phone"><input type="tel" name="identifier" value="<%= identifier %>" required autocomplete="username" autofocus placeholder="<%= t('เช่น 0812345678') %>" inputmode="numeric" maxlength="10"></span>
       </label>
     <% } %>
-    <label>รหัสผ่าน
-      <input type="password" name="password" required autocomplete="current-password">
+    <label><%= t('รหัสผ่าน') %>
+      <span class="field field-lock field-pass"><input type="password" name="password" required autocomplete="current-password"><button type="button" class="pass-toggle" aria-pressed="false" aria-label="<%= t('แสดงรหัสผ่าน') %>"></button></span>
     </label>
-    <button type="submit" class="btn-primary btn-block">เข้าสู่ระบบ</button>
+    <button type="submit" class="btn-primary btn-block"><%= t('เข้าสู่ระบบ') %></button>
   </form>
 
   <% if (as === 'customer') { %>
-    <p class="auth-foot">ยังไม่มีบัญชี? <a href="/register">สมัครสมาชิก</a> — เคยจองที่ร้านแล้วก็สมัครด้วยเบอร์เดิมได้ ประวัติและแต้มยังอยู่ครบ</p>
+    <p class="auth-foot"><%= t('ยังไม่มีบัญชี?') %> <a href="/register"><%= t('สมัครสมาชิก') %></a> <%= t('— เคยจองที่ร้านแล้วก็สมัครด้วยเบอร์เดิมได้ ประวัติและแต้มยังอยู่ครบ') %></p>
   <% } else { %>
-    <p class="auth-foot muted">บัญชีพนักงานสร้างโดยผู้ดูแลระบบในฐานข้อมูล</p>
+    <p class="auth-foot muted"><%= t('บัญชีพนักงานสร้างโดยผู้ดูแลระบบในฐานข้อมูล') %></p>
   <% } %>
 </section>
 
-<%- include('partials/footer', { extraScripts: ['/js/bg-intro.js', '/js/sparkle.js'] }) %>
+<%- include('partials/footer', { extraScripts: ['/js/bg-intro.js', '/js/sparkle.js', '/js/auth-ui.js'] }) %>

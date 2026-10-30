@@ -4,6 +4,12 @@
 (function () {
   const socket = io();
 
+  // แปลภาษา (public/js/i18n.js) — ใช้ T/TR เพราะ t เป็นชื่อตัวแปรวนลูปในไฟล์นี้หลายที่
+  const LANG = window.__lang === 'en' ? 'en' : 'th';
+  const T = (key, vars) => I18n.t(LANG, key, vars);
+  const TR = (text) => I18n.tr(LANG, text);
+  const LOCALE = I18n.locale(LANG);
+
   const liveDot = document.getElementById('live-dot');
   const liveText = document.getElementById('live-text');
   const navQueueBadge = document.getElementById('nav-queue-badge');
@@ -26,9 +32,9 @@
       .replace(/"/g, '&quot;');
   }
 
-  const money = (n) => Number(n || 0).toLocaleString('th-TH');
-  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('th-TH') : '-');
-  const fmtTime = (d) => (d ? new Date(d).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '-');
+  const money = (n) => Number(n || 0).toLocaleString(LOCALE);
+  const fmtDate = (d) => (d ? new Date(d).toLocaleDateString(LOCALE) : '-');
+  const fmtTime = (d) => (d ? new Date(d).toLocaleTimeString(LOCALE, { hour: '2-digit', minute: '2-digit' }) : '-');
 
   function showToast(message, kind) {
     const area = $('toast-area');
@@ -55,7 +61,7 @@
     });
     if (resp.status === 401) {   // session หมดอายุ → กลับไปหน้า login แล้วกลับมาที่เดิม
       location.href = '/login?next=' + encodeURIComponent(location.pathname);
-      return { ok: false, message: 'กรุณาเข้าสู่ระบบใหม่' };
+      return { ok: false, message: T('กรุณาเข้าสู่ระบบใหม่') };
     }
     return resp.json();
   }
@@ -80,19 +86,19 @@
   const isStaff = role === 'admin';
 
   /* ---------------- connection ---------------- */
-  socket.on('connect', () => setLive('live', 'เรียลไทม์ (เชื่อมต่อแล้ว)'));
-  socket.on('disconnect', () => setLive('offline', 'ขาดการเชื่อมต่อ — กำลังลองใหม่...'));
-  socket.on('connect_error', () => setLive('offline', 'เชื่อมต่อไม่ได้'));
-  socket.on('state:error', (p) => setLive('offline', (p && p.message) || 'เชื่อมต่อฐานข้อมูลไม่ได้ชั่วคราว'));
+  socket.on('connect', () => setLive('live', T('เรียลไทม์ (เชื่อมต่อแล้ว)')));
+  socket.on('disconnect', () => setLive('offline', T('ขาดการเชื่อมต่อ — กำลังลองใหม่...')));
+  socket.on('connect_error', () => setLive('offline', T('เชื่อมต่อไม่ได้')));
+  socket.on('state:error', (p) => setLive('offline', TR((p && p.message) || 'เชื่อมต่อฐานข้อมูลไม่ได้ชั่วคราว')));
   socket.on('state:update', (state) => {
-    setLive('live', 'เรียลไทม์ (เชื่อมต่อแล้ว)');
+    setLive('live', T('เรียลไทม์ (เชื่อมต่อแล้ว)'));
     applyState(state);
   });
 
   function applyState(state) {
     currentState = state;
 
-    const now = new Date(state.serverTime || Date.now()).toLocaleTimeString('th-TH');
+    const now = new Date(state.serverTime || Date.now()).toLocaleTimeString(LOCALE);
     document.querySelectorAll('#last-updated').forEach(el => { el.textContent = now; });
 
     if (navQueueBadge) {
@@ -115,7 +121,7 @@
   // ตัวเลือกเกมที่หยิบได้ (มีของเหลือ)
   function gameOptionsHtml(state, placeholder) {
     const opts = state.games.map(g =>
-      `<option value="${g.GameID}" ${g.AvailableQty <= 0 ? 'disabled' : ''}>${escapeHtml(g.Name)} ${g.AvailableQty > 0 ? '(เหลือ ' + g.AvailableQty + ')' : '(หมด)'}</option>`
+      `<option value="${g.GameID}" ${g.AvailableQty <= 0 ? 'disabled' : ''}>${escapeHtml(g.Name)} ${g.AvailableQty > 0 ? T('(เหลือ {n})', { n: g.AvailableQty }) : T('(หมด)')}</option>`
     ).join('');
     return `<option value="">${placeholder}</option>` + opts;
   }
@@ -147,27 +153,27 @@
         if (items.length) {
           gameCell = items.map(b => `
             <span class="game-chip">🎲 ${escapeHtml(b.GameName)}
-              <button type="button" class="chip-return" data-return-borrow-id="${b.BorrowID}">คืนเกม</button>
+              <button type="button" class="chip-return" data-return-borrow-id="${b.BorrowID}">${T('คืนเกม')}</button>
             </span>`).join('');
         } else if (t.Status === 'Occupied' && t.SessionID) {
           gameCell = anyGameLeft
             ? `<div class="pick-game">
-                 <select class="pick-game-select" aria-label="เลือกเกมให้โต๊ะ #${t.TableID}">${gameOptionsHtml(state, 'เลือกเกม...')}</select>
-                 <button type="button" class="btn-primary-sm" data-borrow-session="${t.SessionID}">หยิบเกม</button>
+                 <select class="pick-game-select" aria-label="${T('เลือกเกมให้โต๊ะ #{id}', { id: t.TableID })}">${gameOptionsHtml(state, T('เลือกเกม...'))}</select>
+                 <button type="button" class="btn-primary-sm" data-borrow-session="${t.SessionID}">${T('หยิบเกม')}</button>
                </div>`
-            : '<span class="muted">เกมถูกหยิบหมดทุกเกม</span>';
+            : `<span class="muted">${T('เกมถูกหยิบหมดทุกเกม')}</span>`;
         }
         const waiting = state.queue.filter(q => q.TableID === t.TableID).length;
-        const statusText = (t.Status === 'Available' ? 'ว่าง' : 'ไม่ว่าง') + (waiting ? ` · คิว ${waiting}` : '');
+        const statusText = (t.Status === 'Available' ? T('ว่าง') : T('ไม่ว่าง')) + (waiting ? T(' · คิว {n}', { n: waiting }) : '');
         const extendOpts = state.packages.filter(p => p.DurationMinutes)
-          .map(p => `<option value="${p.PackageID}">+${p.DurationMinutes} นาที (${money(p.Price)} ฿)</option>`).join('');
+          .map(p => `<option value="${p.PackageID}">${T('+{min} นาที ({price} ฿)', { min: p.DurationMinutes, price: money(p.Price) })}</option>`).join('');
         const checkoutHtml = (t.Status === 'Occupied' && t.SessionID)
           ? `<div class="row-actions">
                ${extendOpts ? `<div class="extend-box">
-                 <select class="extend-pkg" aria-label="ต่อเวลาโต๊ะ #${t.TableID}">${extendOpts}</select>
-                 <button type="button" class="btn-extend" data-extend-session="${t.SessionID}">⏱ ต่อเวลา</button>
+                 <select class="extend-pkg" aria-label="${T('ต่อเวลาโต๊ะ #{id}', { id: t.TableID })}">${extendOpts}</select>
+                 <button type="button" class="btn-extend" data-extend-session="${t.SessionID}">${T('⏱ ต่อเวลา')}</button>
                </div>` : ''}
-               <button type="button" class="btn-checkout" data-checkout-session-id="${t.SessionID}">เช็คเอาท์</button>
+               <button type="button" class="btn-checkout" data-checkout-session-id="${t.SessionID}">${T('เช็คเอาท์')}</button>
              </div>`
           : '<span class="empty">-</span>';
 
@@ -177,7 +183,7 @@
           <td>${t.Capacity}</td>
           <td><span class="badge">${statusText}</span></td>
           <td>${t.CustomerName ? `${escapeHtml(t.CustomerName)}<div class="muted">${escapeHtml(t.CustomerPhone || '')}</div>` : '<span class="empty">-</span>'}</td>
-          <td>${t.StartTime ? new Date(t.StartTime).toLocaleTimeString('th-TH') : '-'}</td>
+          <td>${t.StartTime ? new Date(t.StartTime).toLocaleTimeString(LOCALE) : '-'}</td>
           <td data-minutes-left></td>
           <td>${gameCell}</td>
           <td>${checkoutHtml}</td>
@@ -202,7 +208,7 @@
       const badge = card.querySelector('[data-stock]');
       if (badge) {
         badge.className = 'stock-badge ' + (g.AvailableQty > 0 ? 'in' : 'out');
-        badge.textContent = g.AvailableQty > 0 ? `ว่าง ${g.AvailableQty}/${g.TotalQty}` : `หมด 0/${g.TotalQty}`;
+        badge.textContent = g.AvailableQty > 0 ? T('ว่าง {a}/{b}', { a: g.AvailableQty, b: g.TotalQty }) : T('หมด 0/{b}', { b: g.TotalQty });
       }
       const inuse = card.querySelector('[data-inuse]');
       if (inuse) {
@@ -211,7 +217,7 @@
           .map(b => (state.tables.find(t => t.SessionID === b.SessionID) || {}).TableID)
           .filter(Boolean);
         inuse.hidden = tableIds.length === 0;
-        inuse.textContent = tableIds.length ? `🪑 กำลังเล่นที่โต๊ะ ${tableIds.map(n => '#' + n).join(', ')}` : '';
+        inuse.textContent = tableIds.length ? T('🪑 กำลังเล่นที่โต๊ะ {tables}', { tables: tableIds.map(n => '#' + n).join(', ') }) : '';
       }
     });
     renderMyGame();
@@ -236,7 +242,7 @@
       if (ok) shown++;
     });
     const count = $('game-filter-count');
-    if (count) count.textContent = (q || players || onlyFree) ? `แสดง ${shown} จาก ${cards.length} เกม` : `ทั้งหมด ${cards.length} เกม`;
+    if (count) count.textContent = (q || players || onlyFree) ? T('แสดง {shown} จาก {total} เกม', { shown, total: cards.length }) : T('ทั้งหมด {total} เกม', { total: cards.length });
     const empty = $('game-filter-empty');
     if (empty) empty.hidden = shown > 0;
   }
@@ -263,30 +269,30 @@
       const img = document.querySelector(`.game-card[data-game-id="${a.GameID}"] .game-cover img`);
       html = `<div class="status-card is-playing">
         <div>
-          <div class="status-title">🪑 โต๊ะ #${a.TableID} ของคุณกำลังเล่น</div>
+          <div class="status-title">${T('🪑 โต๊ะ #{id} ของคุณกำลังเล่น', { id: a.TableID })}</div>
           <div class="status-meta my-game-now">${img ? `<img src="${escapeHtml(img.getAttribute('src'))}" alt="">` : ''}
-            <span>🎲 <strong>${escapeHtml(a.GameName)}</strong>${a.GameSince ? ' · หยิบเมื่อ ' + fmtTime(a.GameSince) : ''}</span></div>
-          <div class="status-meta muted">อยากเล่นเกมอื่น? กด "คืนเกมนี้" ก่อน แล้วเลือกเกมใหม่ด้านล่าง</div>
+            <span>🎲 <strong>${escapeHtml(a.GameName)}</strong>${a.GameSince ? T(' · หยิบเมื่อ {time}', { time: fmtTime(a.GameSince) }) : ''}</span></div>
+          <div class="status-meta muted">${T('อยากเล่นเกมอื่น? กด "คืนเกมนี้" ก่อน แล้วเลือกเกมใหม่ด้านล่าง')}</div>
         </div>
-        <button type="button" class="btn-return-game" data-my-return>↩ คืนเกมนี้</button>
+        <button type="button" class="btn-return-game" data-my-return>${T('↩ คืนเกมนี้')}</button>
       </div>`;
     } else if (a) {
       html = `<div class="status-card is-pick">
         <div>
-          <div class="status-title">🪑 โต๊ะ #${a.TableID} ยังไม่ได้เลือกเกม</div>
-          <div class="status-meta">กด <strong>"หยิบเกมนี้เข้าโต๊ะ #${a.TableID}"</strong> ที่การ์ดเกมด้านล่าง แล้วรับกล่องเกมที่เคาน์เตอร์</div>
+          <div class="status-title">${T('🪑 โต๊ะ #{id} ยังไม่ได้เลือกเกม', { id: a.TableID })}</div>
+          <div class="status-meta">${T('กด {button} ที่การ์ดเกมด้านล่าง แล้วรับกล่องเกมที่เคาน์เตอร์', { button: '<strong>"' + T('หยิบเกมนี้เข้าโต๊ะ #{id}', { id: a.TableID }) + '"</strong>' })}</div>
         </div>
       </div>`;
     } else if (me.queue && me.queue.length) {
       const q = me.queue[0];
       html = `<div class="status-card is-queued">
-        <div class="status-title">🎫 คุณอยู่คิวที่ ${q.Position} ${q.TableID ? 'ของโต๊ะ #' + q.TableID : ''}</div>
-        <div class="status-meta">ดูเกมไว้ก่อนได้เลย — ปุ่มหยิบเกมจะขึ้นทันทีเมื่อพนักงานเรียกคุณเข้านั่งโต๊ะ</div>
+        <div class="status-title">${q.TableID ? T('🎫 คุณอยู่คิวที่ {pos} ของโต๊ะ #{id}', { pos: q.Position, id: q.TableID }) : T('🎫 คุณอยู่คิวที่ {pos}', { pos: q.Position })}</div>
+        <div class="status-meta">${T('ดูเกมไว้ก่อนได้เลย — ปุ่มหยิบเกมจะขึ้นทันทีเมื่อพนักงานเรียกคุณเข้านั่งโต๊ะ')}</div>
       </div>`;
     } else {
       html = `<div class="status-card is-empty">
-        <div class="status-title">ยังไม่มีโต๊ะที่กำลังเล่น</div>
-        <div class="status-meta"><a href="/booking">จองโต๊ะ</a> ก่อน แล้วกลับมาเลือกเกมที่หน้านี้ได้ตลอด (เลือกทีหลังได้ ไม่ต้องเลือกตอนจอง)</div>
+        <div class="status-title">${T('ยังไม่มีโต๊ะที่กำลังเล่น')}</div>
+        <div class="status-meta">${T('<a href="/booking">จองโต๊ะ</a> ก่อน แล้วกลับมาเลือกเกมที่หน้านี้ได้ตลอด (เลือกทีหลังได้ ไม่ต้องเลือกตอนจอง)')}</div>
       </div>`;
     }
     if (panel.dataset.html !== html) { panel.innerHTML = html; panel.dataset.html = html; }
@@ -301,15 +307,15 @@
       card.classList.toggle('is-current', isCurrent);
       let h = '';
       if (a && isCurrent) {
-        h = `<div class="current">✓ โต๊ะ #${a.TableID} กำลังเล่นเกมนี้</div>`;
+        h = `<div class="current">${T('✓ โต๊ะ #{id} กำลังเล่นเกมนี้', { id: a.TableID })}</div>`;
       } else if (a && a.BorrowID) {
-        h = `<button type="button" class="btn-primary-sm" disabled>🎲 หยิบเกมนี้</button>
-             <span class="note">คืน "${escapeHtml(a.GameName)}" ก่อนถึงจะหยิบเกมนี้ได้ (1 โต๊ะ 1 เกม)</span>`;
+        h = `<button type="button" class="btn-primary-sm" disabled>${T('🎲 หยิบเกมนี้')}</button>
+             <span class="note">${T('คืน "{name}" ก่อนถึงจะหยิบเกมนี้ได้ (1 โต๊ะ 1 เกม)', { name: escapeHtml(a.GameName) })}</span>`;
       } else if (a && g && g.AvailableQty <= 0) {
-        h = `<button type="button" class="btn-primary-sm" disabled>หมดชั่วคราว</button>
-             <span class="note">ทุกกล่องถูกหยิบ/เช่าอยู่ — เลือกเกมอื่นหรือรอสักครู่</span>`;
+        h = `<button type="button" class="btn-primary-sm" disabled>${T('หมดชั่วคราว')}</button>
+             <span class="note">${T('ทุกกล่องถูกหยิบ/เช่าอยู่ — เลือกเกมอื่นหรือรอสักครู่')}</span>`;
       } else if (a) {
-        h = `<button type="button" class="btn-primary-sm" data-my-borrow="${id}">🎲 หยิบเกมนี้เข้าโต๊ะ #${a.TableID}</button>`;
+        h = `<button type="button" class="btn-primary-sm" data-my-borrow="${id}">${T('🎲 หยิบเกมนี้เข้าโต๊ะ #{id}', { id: a.TableID })}</button>`;
       }
       if (box.dataset.html !== h) { box.innerHTML = h; box.dataset.html = h; }
     });
@@ -321,10 +327,10 @@
   }
 
   function tableOptionLabel(t, waiting) {
-    const base = `โต๊ะ #${t.TableID} (${t.Zone}, ${t.Capacity} คน)`;
-    if (t.Status === 'Available' && waiting === 0) return `${base} — ว่าง`;
-    if (t.Status === 'Available') return `${base} — ว่าง แต่มีคิวรอ ${waiting} คิว → เข้าคิว`;
-    return `${base} — ไม่ว่าง · คิวรอ ${waiting} → เข้าคิว`;
+    const base = T('โต๊ะ #{id} ({zone}, {cap} คน)', { id: t.TableID, zone: t.Zone, cap: t.Capacity });
+    if (t.Status === 'Available' && waiting === 0) return T('{base} — ว่าง', { base });
+    if (t.Status === 'Available') return T('{base} — ว่าง แต่มีคิวรอ {waiting} คิว → เข้าคิว', { base, waiting });
+    return T('{base} — ไม่ว่าง · คิวรอ {waiting} → เข้าคิว', { base, waiting });
   }
 
   function renderBooking(state) {
@@ -343,7 +349,7 @@
     // เกมที่หยิบเข้าโต๊ะได้ตอนเปิดโต๊ะ (ไม่บังคับ)
     fillSelect($('instore-game'),
       JSON.stringify(state.games.map(g => [g.GameID, g.AvailableQty])),
-      gameOptionsHtml(state, '— ยังไม่หยิบเกม (เลือกทีหลังได้ที่เมนู 🎲 บอร์ดเกม) —'));
+      gameOptionsHtml(state, T('— ยังไม่หยิบเกม (เลือกทีหลังได้ที่เมนู 🎲 บอร์ดเกม) —')));
 
     // เกมที่เช่าได้ (มีของเหลือ)
     const gameSelect = $('rental-game');
@@ -351,8 +357,8 @@
       JSON.stringify(state.games.map(g => [g.GameID, g.AvailableQty, g.OffsiteRentalRate, g.DepositAmount])),
       state.games.map(g =>
         `<option value="${g.GameID}" data-rate="${g.OffsiteRentalRate}" data-deposit="${g.DepositAmount}" ${g.AvailableQty <= 0 ? 'disabled' : ''}>` +
-        `${escapeHtml(g.Name)} — ค่าเช่า ${money(g.OffsiteRentalRate)} / มัดจำ ${money(g.DepositAmount)} บาท ` +
-        `(${g.AvailableQty > 0 ? 'เหลือ ' + g.AvailableQty : 'หมด'})</option>`
+        `${escapeHtml(g.Name)} — ${T('ค่าเช่า {rate} / มัดจำ {deposit} บาท', { rate: money(g.OffsiteRentalRate), deposit: money(g.DepositAmount) })} ` +
+        `(${g.AvailableQty > 0 ? T('เหลือ {n}', { n: g.AvailableQty }) : T('หมด')})</option>`
       ).join(''));
     updateRentalSummary();
 
@@ -371,23 +377,25 @@
     if (note) {
       if (!willQueue) {
         note.className = 'field-note ok';
-        note.textContent = '✓ โต๊ะว่าง — กดจองแล้วเช็คอินและเริ่มนับเวลาทันที';
+        note.textContent = T('✓ โต๊ะว่าง — กดจองแล้วเช็คอินและเริ่มนับเวลาทันที');
       } else if (t.Status === 'Available') {
         note.className = 'field-note warn';
         note.textContent = isStaff
-          ? `โต๊ะนี้ว่างแล้วแต่มีคิวรออยู่ ${waiting} คิว — ลูกค้าจะเข้าคิวเป็นคิวที่ ${waiting + 1} (เรียกคิวก่อนหน้าได้ที่ส่วน "คิวรอโต๊ะ" ด้านล่าง)`
-          : `โต๊ะนี้มีคนรอคิวอยู่ ${waiting} คิว — คุณจะได้คิวที่ ${waiting + 1}`;
+          ? T('โต๊ะนี้ว่างแล้วแต่มีคิวรออยู่ {waiting} คิว — ลูกค้าจะเข้าคิวเป็นคิวที่ {next} (เรียกคิวก่อนหน้าได้ที่ส่วน "คิวรอโต๊ะ" ด้านล่าง)', { waiting, next: waiting + 1 })
+          : T('โต๊ะนี้มีคนรอคิวอยู่ {waiting} คิว — คุณจะได้คิวที่ {next}', { waiting, next: waiting + 1 });
       } else {
         note.className = 'field-note warn';
-        const left = (t.MinutesLeft !== null && t.MinutesLeft !== undefined) ? ` เหลือเวลาอีกประมาณ ${Math.max(t.MinutesLeft, 0)} นาที ·` : '';
-        note.textContent = `โต๊ะนี้ไม่ว่าง —${left} ${isStaff ? 'ลูกค้า' : 'คุณ'}จะเข้าคิวรอโต๊ะนี้เป็นคิวที่ ${waiting + 1}`;
+        const left = (t.MinutesLeft !== null && t.MinutesLeft !== undefined) ? T(' เหลือเวลาอีกประมาณ {min} นาที ·', { min: Math.max(t.MinutesLeft, 0) }) : '';
+        note.textContent = (isStaff
+          ? T('โต๊ะนี้ไม่ว่าง —{left} ลูกค้าจะเข้าคิวรอโต๊ะนี้เป็นคิวที่ {next}', { left, next: waiting + 1 })
+          : T('โต๊ะนี้ไม่ว่าง —{left} คุณจะเข้าคิวรอโต๊ะนี้เป็นคิวที่ {next}', { left, next: waiting + 1 }));
       }
     }
 
     document.querySelectorAll('#instore-form .checkin-only').forEach(el => { el.hidden = willQueue; });
 
     const btn = $('instore-submit');
-    if (btn) btn.textContent = willQueue ? '🎫 เข้าคิวโต๊ะนี้' : '🪑 จองโต๊ะ';
+    if (btn) btn.textContent = willQueue ? T('🎫 เข้าคิวโต๊ะนี้') : T('🪑 จองโต๊ะ');
   }
 
   function updateRentalSummary() {
@@ -397,13 +405,13 @@
     if (!select || !box) return;
     const opt = select.options[select.selectedIndex];
     if (!opt || opt.disabled) {
-      box.innerHTML = 'ตอนนี้ไม่มีเกมเหลือให้เช่ากลับบ้าน';
+      box.innerHTML = T('ตอนนี้ไม่มีเกมเหลือให้เช่ากลับบ้าน');
       if (submit) submit.disabled = true;
       return;
     }
     if (submit) submit.disabled = false;
     const rate = Number(opt.dataset.rate), deposit = Number(opt.dataset.deposit);
-    box.innerHTML = `ยอดที่ต้องเก็บตอนเช่า: ค่าเช่า ${money(rate)} + มัดจำ ${money(deposit)} = <strong>${money(rate + deposit)} บาท</strong> <span class="muted">(มัดจำคืนตอนคืนเกม)</span>`;
+    box.innerHTML = `${T('ยอดที่ต้องเก็บตอนเช่า: ค่าเช่า {rate} + มัดจำ {deposit} =', { rate: money(rate), deposit: money(deposit) })} <strong>${T('{total} บาท', { total: money(rate + deposit) })}</strong> <span class="muted">${T('(มัดจำคืนตอนคืนเกม)')}</span>`;
   }
 
   // สลับโหมด เล่นที่ร้าน / เช่ากลับบ้าน
@@ -421,6 +429,12 @@
     if (e.target.id === 'rental-game') updateRentalSummary();
   });
 
+  // เปิดแท็บ "เช่ากลับบ้าน" ทันทีถ้าลิงก์มาจากหน้าส่อง 3D (/booking#rental)
+  if (location.hash === '#rental') {
+    const r = document.querySelector('input[name="booking-mode"][value="rental"]');
+    if (r) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+
   // ค่าเริ่มต้นวันกำหนดคืน = อีก 3 วัน
   (function initDueDate() {
     const due = $('rental-due');
@@ -436,7 +450,7 @@
     const box = $('queue-groups');
     if (!box) return;
     const total = $('queue-total');
-    if (total) total.textContent = state.queue.length ? `(${state.queue.length} คิว)` : '';
+    if (total) total.textContent = state.queue.length ? T('({n} คิว)', { n: state.queue.length }) : '';
 
     const sig = JSON.stringify([
       state.queue.map(q => [q.QueueID, q.TableID]),
@@ -447,18 +461,18 @@
     box.dataset.sig = sig;
 
     if (state.queue.length === 0) {
-      box.innerHTML = '<p class="empty">ยังไม่มีคิวรอ</p>';
+      box.innerHTML = `<p class="empty">${T('ยังไม่มีคิวรอ')}</p>`;
       return;
     }
 
     const pkgOptions = state.packages.map(p =>
-      `<option value="${p.PackageID}">${escapeHtml(p.PackageName)} (${money(p.Price)} บาท)</option>`).join('');
+      `<option value="${p.PackageID}">${escapeHtml(TR(p.PackageName))} (${money(p.Price)} ${T('บาท')})</option>`).join('');
 
     const listHtml = (items) => `<ol class="queue-list">${items.map(q => `
       <li>
         <span class="queue-name">${escapeHtml(q.CustomerName)}</span>
-        <span class="muted">${q.Phone ? escapeHtml(q.Phone) + ' · ' : ''}ลงคิว ${fmtTime(q.QueueTime)}</span>
-        <button type="button" class="btn-link-danger" data-cancel-queue="${q.QueueID}">ยกเลิกคิว</button>
+        <span class="muted">${q.Phone ? escapeHtml(q.Phone) + ' · ' : ''}${T('ลงคิว {time}', { time: fmtTime(q.QueueTime) })}</span>
+        <button type="button" class="btn-link-danger" data-cancel-queue="${q.QueueID}">${T('ยกเลิกคิว')}</button>
       </li>`).join('')}</ol>`;
 
     let html = '';
@@ -471,13 +485,13 @@
       html += `
         <div class="queue-group">
           <div class="queue-group-head">
-            <strong>โต๊ะ #${t.TableID}</strong>
-            <span class="muted">${escapeHtml(t.Zone)}, ${t.Capacity} คน</span>
-            <span class="badge ${free ? 'badge-free' : 'badge-busy'}">${free ? 'ว่างแล้ว — เรียกคิวได้' : 'ไม่ว่าง — รอเช็คเอาท์'}</span>
+            <strong>${T('โต๊ะ #{id}', { id: t.TableID })}</strong>
+            <span class="muted">${T('{zone}, {cap} คน', { zone: escapeHtml(t.Zone), cap: t.Capacity })}</span>
+            <span class="badge ${free ? 'badge-free' : 'badge-busy'}">${free ? T('ว่างแล้ว — เรียกคิวได้') : T('ไม่ว่าง — รอเช็คเอาท์')}</span>
             ${free ? `
             <div class="queue-actions">
-              <select class="seat-pkg" aria-label="แพ็กเกจเวลา">${pkgOptions}</select>
-              <button type="button" class="btn-primary-sm" data-seat-table="${t.TableID}">เรียกคิวแรกเข้านั่ง</button>
+              <select class="seat-pkg" aria-label="${T('แพ็กเกจเวลา')}">${pkgOptions}</select>
+              <button type="button" class="btn-primary-sm" data-seat-table="${t.TableID}">${T('เรียกคิวแรกเข้านั่ง')}</button>
             </div>` : ''}
           </div>
           ${listHtml(items)}
@@ -491,14 +505,14 @@
       html += `
         <div class="queue-group">
           <div class="queue-group-head">
-            <strong>คิวรวม</strong>
-            <span class="muted">ไม่ระบุโต๊ะ — ได้โต๊ะไหนว่างก่อนก็ได้</span>
+            <strong>${T('คิวรวม')}</strong>
+            <span class="muted">${T('ไม่ระบุโต๊ะ — ได้โต๊ะไหนว่างก่อนก็ได้')}</span>
             ${freeTables.length ? `
             <div class="queue-actions">
-              <select class="seat-table" aria-label="โต๊ะว่าง">${freeTables.map(t => `<option value="${t.TableID}">โต๊ะ #${t.TableID} (${escapeHtml(t.Zone)}, ${t.Capacity} คน)</option>`).join('')}</select>
-              <select class="seat-pkg" aria-label="แพ็กเกจเวลา">${pkgOptions}</select>
-              <button type="button" class="btn-primary-sm" data-seat-table="general">เรียกคิวแรกเข้านั่ง</button>
-            </div>` : '<span class="badge badge-busy">รอโต๊ะว่าง</span>'}
+              <select class="seat-table" aria-label="${T('โต๊ะว่าง')}">${freeTables.map(t => `<option value="${t.TableID}">${T('โต๊ะ #{id} ({zone}, {cap} คน)', { id: t.TableID, zone: escapeHtml(t.Zone), cap: t.Capacity })}</option>`).join('')}</select>
+              <select class="seat-pkg" aria-label="${T('แพ็กเกจเวลา')}">${pkgOptions}</select>
+              <button type="button" class="btn-primary-sm" data-seat-table="general">${T('เรียกคิวแรกเข้านั่ง')}</button>
+            </div>` : `<span class="badge badge-busy">${T('รอโต๊ะว่าง')}</span>`}
           </div>
           ${listHtml(general)}
         </div>`;
@@ -533,19 +547,19 @@
     tbody.innerHTML = state.rentals.map(r => {
       const returned = r.Status === 'Returned';
       const status = returned
-        ? `<span class="badge badge-free">คืนแล้ว</span><div class="muted">${fmtDate(r.ReturnDate)} · ${escapeHtml(r.ReturnCondition || '-')} · คืนมัดจำ ${money(r.DepositRefunded)}</div>`
-        : `<span class="badge">กำลังเช่า</span>${r.IsOverdue ? `<span class="badge overdue">เกินกำหนด${r.OverdueDays ? ' ' + r.OverdueDays + ' วัน' : ''}</span>` : ''}`;
+        ? `<span class="badge badge-free">${T('คืนแล้ว')}</span><div class="muted">${fmtDate(r.ReturnDate)} · ${escapeHtml(TR(r.ReturnCondition || '-'))} · ${T('คืนมัดจำ {amount}', { amount: money(r.DepositRefunded) })}</div>`
+        : `<span class="badge">${T('กำลังเช่า')}</span>${r.IsOverdue ? `<span class="badge overdue">${r.OverdueDays ? T('เกินกำหนด {days} วัน', { days: r.OverdueDays }) : T('เกินกำหนด')}</span>` : ''}`;
       const action = returned ? '<span class="empty">-</span>' : `
         <div class="return-controls">
-          <select class="ret-cond" aria-label="สภาพเกมตอนคืน">
-            <option value="ปกติ">ปกติ</option>
-            <option value="ชำรุด">ชำรุด</option>
-            <option value="ชิ้นส่วนหาย">ชิ้นส่วนหาย</option>
+          <select class="ret-cond" aria-label="${T('สภาพเกมตอนคืน')}">
+            <option value="ปกติ">${T('ปกติ')}</option>
+            <option value="ชำรุด">${T('ชำรุด')}</option>
+            <option value="ชิ้นส่วนหาย">${T('ชิ้นส่วนหาย')}</option>
           </select>
-          <label class="ret-deposit-label">คืนมัดจำ
+          <label class="ret-deposit-label">${T('คืนมัดจำ')}
             <input type="number" class="ret-deposit" min="0" max="${Number(r.Deposit)}" step="1" value="${Number(r.Deposit)}">
           </label>
-          <button type="button" class="btn-primary-sm" data-return-rental="${r.RentalID}">คืนเกม</button>
+          <button type="button" class="btn-primary-sm" data-return-rental="${r.RentalID}">${T('คืนเกม')}</button>
         </div>`;
       return `<tr class="${r.IsOverdue && !returned ? 'status-busy' : ''}">
         <td>#${r.RentalID}</td>
@@ -570,7 +584,7 @@
       e.preventDefault();
       const msgEl = $('instore-msg');
       const btn = $('instore-submit');
-      setMsg(msgEl, 'กำลังบันทึก...');
+      setMsg(msgEl, T('กำลังบันทึก...'));
       if (btn) btn.disabled = true;
       try {
         const data = await postJson('/api/booking', {
@@ -585,7 +599,7 @@
           if ($('instore-game')) $('instore-game').value = '';
         }
       } catch (err) {
-        setMsg(msgEl, 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+        setMsg(msgEl, T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'), 'error');
       } finally {
         if (btn) btn.disabled = false;
       }
@@ -599,12 +613,12 @@
       const needNid = nidRow && !nidRow.hidden;
       const nid = needNid ? $('rental-nid').value.trim() : '';
       if (needNid && !/^\d{13}$/.test(nid)) {
-        setMsg(msgEl, 'เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก', 'error');
+        setMsg(msgEl, T('เลขบัตรประชาชนต้องเป็นตัวเลข 13 หลัก'), 'error');
         $('rental-nid').focus();
         return;
       }
       const btn = $('rental-submit');
-      setMsg(msgEl, 'กำลังบันทึก...');
+      setMsg(msgEl, T('กำลังบันทึก...'));
       if (btn) btn.disabled = true;
       try {
         const data = await postJson('/api/rent', {
@@ -622,7 +636,7 @@
           $('rental-nid').focus();
         }
       } catch (err) {
-        setMsg(msgEl, 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+        setMsg(msgEl, T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'), 'error');
       } finally {
         if (btn) btn.disabled = false;
         updateRentalSummary();
@@ -639,8 +653,8 @@
     if (note) {
       note.className = 'field-note' + (registered ? ' ok' : '');
       note.textContent = registered
-        ? '✓ บัญชีของคุณลงทะเบียนเลขบัตรประชาชนแล้ว — เช่าได้เลย'
-        : 'การเช่ากลับบ้านต้องใช้เลขบัตรประชาชน 13 หลัก กรอกครั้งแรกครั้งเดียว (พนักงานจะตรวจบัตรตอนรับเกม)';
+        ? T('✓ บัญชีของคุณลงทะเบียนเลขบัตรประชาชนแล้ว — เช่าได้เลย')
+        : T('การเช่ากลับบ้านต้องใช้เลขบัตรประชาชน 13 หลัก กรอกครั้งแรกครั้งเดียว (พนักงานจะตรวจบัตรตอนรับเกม)');
     }
   }
 
@@ -652,7 +666,7 @@
       showToast(data.message, data.ok ? 'ok' : 'error');
       return data;
     } catch (err) {
-      showToast('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้', 'error');
+      showToast(T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'), 'error');
     } finally {
       btn.disabled = false;
     }
@@ -674,10 +688,10 @@
     if (myReturn) {
       if (!myReturn.classList.contains('confirming')) {
         myReturn.classList.add('confirming');
-        myReturn.textContent = 'กดอีกครั้งเพื่อยืนยันคืนเกม';
+        myReturn.textContent = T('กดอีกครั้งเพื่อยืนยันคืนเกม');
         setTimeout(() => {
           myReturn.classList.remove('confirming');
-          myReturn.textContent = '↩ คืนเกมนี้';
+          myReturn.textContent = T('↩ คืนเกมนี้');
         }, 3000);
         return;
       }
@@ -695,7 +709,7 @@
     if (borrow) {
       const select = borrow.closest('.pick-game').querySelector('.pick-game-select');
       if (!select.value) {
-        showToast('เลือกเกมก่อนกด "หยิบเกม"', 'error');
+        showToast(T('เลือกเกมก่อนกด "หยิบเกม"'), 'error');
         select.focus();
         return;
       }
@@ -732,10 +746,10 @@
     if (cancel) {
       if (!cancel.classList.contains('confirming')) {
         cancel.classList.add('confirming');
-        cancel.textContent = 'กดอีกครั้งเพื่อยืนยัน';
+        cancel.textContent = T('กดอีกครั้งเพื่อยืนยัน');
         setTimeout(() => {
           cancel.classList.remove('confirming');
-          cancel.textContent = 'ยกเลิกคิว';
+          cancel.textContent = T('ยกเลิกคิว');
         }, 3000);
         return;
       }
@@ -779,9 +793,9 @@
         <div class="me-name">👤 ${escapeHtml(p.FirstName)} ${escapeHtml(p.LastName)}</div>
         <div class="me-meta">
           <span>📱 ${escapeHtml(p.Phone)}</span>
-          <span>⭐ <strong>${money(p.Points)}</strong> แต้ม</span>
-          <span>สมาชิกตั้งแต่ ${fmtDate(p.CreatedDate)}</span>
-          <span class="badge ${p.HasNationalID ? 'badge-free' : ''}">${p.HasNationalID ? 'ลงทะเบียนเช่ากลับบ้านแล้ว' : 'ยังไม่ได้ลงทะเบียนเช่ากลับบ้าน (กรอกเลขบัตรตอนเช่าครั้งแรก)'}</span>
+          <span>⭐ ${T('{points} แต้ม', { points: '<strong>' + money(p.Points) + '</strong>' })}</span>
+          <span>${T('สมาชิกตั้งแต่ {date}', { date: fmtDate(p.CreatedDate) })}</span>
+          <span class="badge ${p.HasNationalID ? 'badge-free' : ''}">${p.HasNationalID ? T('ลงทะเบียนเช่ากลับบ้านแล้ว') : T('ยังไม่ได้ลงทะเบียนเช่ากลับบ้าน (กรอกเลขบัตรตอนเช่าครั้งแรก)')}</span>
         </div>`;
     }
 
@@ -792,28 +806,28 @@
         const a = me.active;
         const left = a.MinutesLeft !== null && a.MinutesLeft !== undefined ? Math.max(a.MinutesLeft, 0) : '-';
         html += `<div class="status-card is-playing">
-          <div class="status-title">🪑 คุณกำลังเล่นที่โต๊ะ #${a.TableID} <span class="muted">(${escapeHtml(a.Zone)})</span></div>
-          <div class="status-meta">${escapeHtml(a.PackageName)} · เริ่ม ${fmtTime(a.StartTime)} · เหลือเวลาประมาณ <strong>${left}</strong> นาที</div>
-          <div class="status-meta">🎲 ${a.GameName ? 'กำลังเล่น <strong>' + escapeHtml(a.GameName) + '</strong>' : 'ยังไม่ได้หยิบเกม'} · <a href="/games">${a.GameName ? 'เปลี่ยนเกม' : 'เลือกบอร์ดเกม →'}</a></div>
+          <div class="status-title">${T('🪑 คุณกำลังเล่นที่โต๊ะ #{id}', { id: a.TableID })} <span class="muted">(${escapeHtml(a.Zone)})</span></div>
+          <div class="status-meta">${escapeHtml(TR(a.PackageName))} · ${T('เริ่ม {time}', { time: fmtTime(a.StartTime) })} · ${T('เหลือเวลาประมาณ {left} นาที', { left: '<strong>' + left + '</strong>' })}</div>
+          <div class="status-meta">🎲 ${a.GameName ? T('กำลังเล่น {game}', { game: '<strong>' + escapeHtml(a.GameName) + '</strong>' }) : T('ยังไม่ได้หยิบเกม')} · <a href="/games">${a.GameName ? T('เปลี่ยนเกม') : T('เลือกบอร์ดเกม →')}</a></div>
         </div>`;
       }
       me.queue.forEach(q => {
         html += `<div class="status-card is-queued">
-          <div class="status-title">🎫 คุณอยู่คิวที่ <strong>${q.Position}</strong> ${q.TableID ? 'ของโต๊ะ #' + q.TableID : '(คิวรวม)'}</div>
-          <div class="status-meta">ลงคิวเมื่อ ${fmtTime(q.QueueTime)} · พนักงานจะเรียกเมื่อโต๊ะว่าง
-            <button type="button" class="btn-link-danger" data-cancel-queue="${q.QueueID}">ยกเลิกคิว</button></div>
+          <div class="status-title">${q.TableID ? T('🎫 คุณอยู่คิวที่ {pos} ของโต๊ะ #{id}', { pos: '<strong>' + q.Position + '</strong>', id: q.TableID }) : T('🎫 คุณอยู่คิวที่ {pos} (คิวรวม)', { pos: '<strong>' + q.Position + '</strong>' })}</div>
+          <div class="status-meta">${T('ลงคิวเมื่อ {time} · พนักงานจะเรียกเมื่อโต๊ะว่าง', { time: fmtTime(q.QueueTime) })}
+            <button type="button" class="btn-link-danger" data-cancel-queue="${q.QueueID}">${T('ยกเลิกคิว')}</button></div>
         </div>`;
       });
       me.rentals.filter(r => r.Status !== 'Returned').forEach(r => {
         html += `<div class="status-card is-rental${r.IsOverdue ? ' is-overdue' : ''}">
-          <div class="status-title">🏠 เช่า <strong>${escapeHtml(r.GameName)}</strong> กลับบ้านอยู่ <span class="muted">(บิล #${r.RentalID})</span></div>
-          <div class="status-meta">คืนภายใน <strong>${fmtDate(r.DueDate)}</strong>${r.IsOverdue ? ` · <span class="badge overdue">เกินกำหนด${r.OverdueDays ? ' ' + r.OverdueDays + ' วัน' : ''} — กรุณาคืนที่เคาน์เตอร์</span>` : ''} · มัดจำ ${money(r.Deposit)} บาท (ได้คืนตอนคืนเกม)</div>
+          <div class="status-title">${T('🏠 เช่า {game} กลับบ้านอยู่', { game: '<strong>' + escapeHtml(r.GameName) + '</strong>' })} <span class="muted">(${T('บิล #{id}', { id: r.RentalID })})</span></div>
+          <div class="status-meta">${T('คืนภายใน {date}', { date: '<strong>' + fmtDate(r.DueDate) + '</strong>' })}${r.IsOverdue ? ` · <span class="badge overdue">${(r.OverdueDays ? T('เกินกำหนด {days} วัน', { days: r.OverdueDays }) : T('เกินกำหนด')) + T(' — กรุณาคืนที่เคาน์เตอร์')}</span>` : ''} · ${T('มัดจำ {amount} บาท (ได้คืนตอนคืนเกม)', { amount: money(r.Deposit) })}</div>
         </div>`;
       });
       if (!html) {
         html = $('booking-card')
-          ? '<p class="muted">ยังไม่มีการจอง — จองโต๊ะหรือเช่าเกมด้านล่างได้เลย</p>'
-          : '<p class="muted">ยังไม่มีการจองตอนนี้ — <a href="/booking">จองโต๊ะ / เช่าเกม</a></p>';
+          ? `<p class="muted">${T('ยังไม่มีการจอง — จองโต๊ะหรือเช่าเกมด้านล่างได้เลย')}</p>`
+          : `<p class="muted">${T('ยังไม่มีการจองตอนนี้ — {link}', { link: '<a href="/booking">' + T('จองโต๊ะ / เช่าเกม') + '</a>' })}</p>`;
       }
       if (status.dataset.html !== html) { status.innerHTML = html; status.dataset.html = html; }
     }
@@ -829,10 +843,10 @@
       sBody.innerHTML = me.sessions.map(x => `<tr>
         <td>${fmtDate(x.StartTime)} ${fmtTime(x.StartTime)}</td>
         <td>#${x.TableID}</td>
-        <td>${escapeHtml(x.PackageName)}</td>
+        <td>${escapeHtml(TR(x.PackageName))}</td>
         <td>${x.Games ? escapeHtml(x.Games) : '<span class="empty">-</span>'}</td>
         <td>${money(x.AmountPaid)}</td>
-        <td><span class="badge ${x.Status === 'Active' ? 'badge-busy' : ''}">${x.Status === 'Active' ? 'กำลังเล่น' : 'เสร็จแล้ว'}</span></td>
+        <td><span class="badge ${x.Status === 'Active' ? 'badge-busy' : ''}">${x.Status === 'Active' ? T('กำลังเล่น') : T('เสร็จแล้ว')}</span></td>
       </tr>`).join('');
       $('me-sessions-table').hidden = !me.sessions.length;
       $('me-sessions-empty').hidden = !!me.sessions.length;
@@ -846,8 +860,8 @@
         <td>${fmtDate(r.DueDate)}</td>
         <td>${money(r.RentalFee)} / ${money(r.Deposit)}</td>
         <td>${r.Status === 'Returned'
-          ? '<span class="badge badge-free">คืนแล้ว</span>'
-          : '<span class="badge">กำลังเช่า</span>' + (r.IsOverdue ? '<span class="badge overdue">เกินกำหนด</span>' : '')}</td>
+          ? `<span class="badge badge-free">${T('คืนแล้ว')}</span>`
+          : `<span class="badge">${T('กำลังเช่า')}</span>` + (r.IsOverdue ? `<span class="badge overdue">${T('เกินกำหนด')}</span>` : '')}</td>
       </tr>`).join('');
       $('me-rentals-table').hidden = !me.rentals.length;
       $('me-rentals-empty').hidden = !!me.rentals.length;

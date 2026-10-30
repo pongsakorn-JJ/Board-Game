@@ -7,8 +7,14 @@
   if (!META) return;
   const $ = (id) => document.getElementById(id);
 
-  const DIFF = { Easy: 'ง่าย', Medium: 'ปานกลาง', Hard: 'ยาก' };
-  const QSTATUS = { Waiting: 'รอคิว', Seated: 'ได้โต๊ะแล้ว', Cancelled: 'ยกเลิก' };
+  // แปลภาษา (public/js/i18n.js)
+  const LANG = window.__lang === 'en' ? 'en' : 'th';
+  const T = (key, vars) => I18n.t(LANG, key, vars);
+  const TR = (text) => I18n.tr(LANG, text);
+  const LOCALE = I18n.locale(LANG);
+
+  const DIFF = { Easy: T('ง่าย'), Medium: T('ปานกลาง'), Hard: T('ยาก') };
+  const QSTATUS = { Waiting: T('รอคิว'), Seated: T('ได้โต๊ะแล้ว'), Cancelled: T('ยกเลิก') };
 
   let current = META[window.__adminStart] ? window.__adminStart : 'customers';
   let data = { rows: [], lookups: {} };
@@ -19,7 +25,7 @@
 
   const esc = (v) => String(v == null ? '' : v)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const money = (n) => Number(n || 0).toLocaleString('th-TH', { maximumFractionDigits: 2 });
+  const money = (n) => Number(n || 0).toLocaleString(LOCALE, { maximumFractionDigits: 2 });
 
   function toast(message, kind) {
     const area = $('toast-area');
@@ -40,9 +46,9 @@
     });
     if (resp.status === 401) {
       location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-      return { ok: false, message: 'กรุณาเข้าสู่ระบบใหม่' };
+      return { ok: false, message: T('กรุณาเข้าสู่ระบบใหม่') };
     }
-    try { return await resp.json(); } catch (e) { return { ok: false, message: 'เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ (' + resp.status + ')' }; }
+    try { return await resp.json(); } catch (e) { return { ok: false, message: T('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ ({status})', { status: resp.status }) }; }
   }
 
   /* ---------------- แสดงค่าในแต่ละคอลัมน์ ---------------- */
@@ -54,19 +60,19 @@
       case 'num': html = money(v); break;
       case 'money': html = money(v) + ' ฿'; break;
       case 'nid': html = v ? `<span title="${esc(v)}">•••••••••${esc(String(v).slice(-4))}</span>` : '<span class="empty">-</span>'; break;
-      case 'yesno': html = v ? '<span class="badge badge-free">มี</span>' : '<span class="badge">ไม่มี</span>'; break;
+      case 'yesno': html = v ? `<span class="badge badge-free">${T('มี')}</span>` : `<span class="badge">${T('ไม่มี')}</span>`; break;
       case 'img': html = `<img class="admin-thumb" src="${esc(v || '/images/games/default.svg')}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/games/default.svg'">`; break;
-      case 'players': html = `${esc(row.MinPlayer)}–${esc(row.MaxPlayer)} คน`; break;
+      case 'players': html = esc(T('{min}–{max} คน', { min: row.MinPlayer, max: row.MaxPlayer })); break;
       case 'difficulty': html = esc(DIFF[v] || v || '-'); break;
       case 'stock': html = `<span class="badge ${row.AvailableQty > 0 ? 'badge-free' : 'badge-busy'}">${esc(row.AvailableQty)} / ${esc(row.TotalQty)}</span>`; break;
-      case 'minutes': html = v == null ? 'เหมาวัน' : `${esc(v)} นาที`; break;
-      case 'table': html = v ? `โต๊ะ #${esc(v)}` : '<span class="muted">คิวรวม</span>'; break;
-      case 'tableStatus': html = v === 'Available' ? '<span class="badge badge-free">ว่าง</span>' : '<span class="badge badge-busy">ไม่ว่าง</span>'; break;
-      case 'sessionStatus': html = v === 'Active' ? '<span class="badge badge-busy">กำลังเล่น</span>' : '<span class="badge">เสร็จแล้ว</span>'; break;
+      case 'minutes': html = v == null ? T('เหมาวัน') : esc(T('{n} นาที', { n: v })); break;
+      case 'table': html = v ? esc(T('โต๊ะ #{id}', { id: v })) : `<span class="muted">${T('คิวรวม')}</span>`; break;
+      case 'tableStatus': html = v === 'Available' ? `<span class="badge badge-free">${T('ว่าง')}</span>` : `<span class="badge badge-busy">${T('ไม่ว่าง')}</span>`; break;
+      case 'sessionStatus': html = v === 'Active' ? `<span class="badge badge-busy">${T('กำลังเล่น')}</span>` : `<span class="badge">${T('เสร็จแล้ว')}</span>`; break;
       case 'queueStatus': html = `<span class="badge ${v === 'Waiting' ? 'badge-busy' : ''}">${esc(QSTATUS[v] || v)}</span>`; break;
       case 'rentalStatus':
-        html = v === 'Returned' ? '<span class="badge badge-free">คืนแล้ว</span>'
-          : '<span class="badge">กำลังเช่า</span>' + (row.IsOverdue ? ' <span class="badge overdue">เกินกำหนด</span>' : '');
+        html = v === 'Returned' ? `<span class="badge badge-free">${T('คืนแล้ว')}</span>`
+          : `<span class="badge">${T('กำลังเช่า')}</span>` + (row.IsOverdue ? ` <span class="badge overdue">${T('เกินกำหนด')}</span>` : '');
         break;
       default: html = (v === null || v === undefined || v === '') ? '<span class="empty">-</span>' : esc(v);
     }
@@ -86,12 +92,12 @@
     if (!force && sig === lastSig) return;
     lastSig = sig;
 
-    $('admin-count').textContent = q ? `พบ ${rows.length} จาก ${data.rows.length} รายการ` : `${data.rows.length} รายการ`;
-    $('admin-head').innerHTML = '<tr>' + m.columns.map(c => `<th>${esc(c.label)}</th>`).join('') + '<th>จัดการ</th></tr>';
+    $('admin-count').textContent = q ? T('พบ {found} จาก {total} รายการ', { found: rows.length, total: data.rows.length }) : T('{total} รายการ', { total: data.rows.length });
+    $('admin-head').innerHTML = '<tr>' + m.columns.map(c => `<th>${esc(c.label)}</th>`).join('') + `<th>${T('จัดการ')}</th></tr>`;
 
     const body = $('admin-body');
     if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="${m.columns.length + 1}" class="empty">${q ? 'ไม่พบข้อมูลที่ค้นหา' : 'ยังไม่มีข้อมูลในตารางนี้'}</td></tr>`;
+      body.innerHTML = `<tr><td colspan="${m.columns.length + 1}" class="empty">${q ? T('ไม่พบข้อมูลที่ค้นหา') : T('ยังไม่มีข้อมูลในตารางนี้')}</td></tr>`;
       return;
     }
     body.innerHTML = rows.map(r => {
@@ -100,10 +106,10 @@
       return `<tr data-id="${esc(id)}" class="${changed ? 'row-flash' : ''}">
         ${m.columns.map(c => `<td>${cell(c, r)}</td>`).join('')}
         <td class="admin-actions">
-          <button type="button" class="btn-edit" data-edit="${esc(id)}">✏️ แก้ไข</button>
+          <button type="button" class="btn-edit" data-edit="${esc(id)}">${T('✏️ แก้ไข')}</button>
           ${r._noDelete
-            ? `<button type="button" class="btn-delete" disabled title="${esc(r._noDelete)}" aria-label="ลบไม่ได้: ${esc(r._noDelete)}">🔒 ลบไม่ได้</button>`
-            : `<button type="button" class="btn-delete" data-delete="${esc(id)}">🗑 ลบ</button>`}
+            ? `<button type="button" class="btn-delete" disabled title="${esc(TR(r._noDelete))}" aria-label="${esc(T('ลบไม่ได้: {reason}', { reason: TR(r._noDelete) }))}">${T('🔒 ลบไม่ได้')}</button>`
+            : `<button type="button" class="btn-delete" data-delete="${esc(id)}">${T('🗑 ลบ')}</button>`}
         </td>
       </tr>`;
     }).join('');
@@ -119,7 +125,7 @@
       if (key !== current) return;           // ผู้ใช้เปลี่ยนแท็บระหว่างโหลด
       if (!res.ok) {
         $('admin-error').hidden = false;
-        $('admin-error').textContent = res.message || 'โหลดข้อมูลไม่สำเร็จ';
+        $('admin-error').textContent = res.message || T('โหลดข้อมูลไม่สำเร็จ');
         return;
       }
       $('admin-error').hidden = true;
@@ -127,11 +133,11 @@
       if (prevRowSig.size) next.forEach((sig, id) => { if (prevRowSig.get(id) !== sig) flashIds.add(id); });
       prevRowSig = next;
       data = res;
-      $('admin-updated').textContent = new Date().toLocaleTimeString('th-TH');
+      $('admin-updated').textContent = new Date().toLocaleTimeString(LOCALE);
       render();
     } catch (err) {
       $('admin-error').hidden = false;
-      $('admin-error').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+      $('admin-error').textContent = T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     } finally {
       loading = false;
       if (pending) { pending = false; load(); }
@@ -147,12 +153,12 @@
     document.querySelectorAll('#admin-tabs a').forEach(a => a.classList.toggle('active', a.dataset.entity === key));
     $('admin-title').textContent = `${m.icon} ${m.label}`;
     $('admin-add').hidden = !m.canCreate;
-    $('admin-add').textContent = '+ เพิ่ม' + m.label;
+    $('admin-add').textContent = T('+ เพิ่ม{label}', { label: m.label });
     const note = $('admin-note');
     note.hidden = m.canCreate;
-    note.textContent = m.canCreate ? '' : `${m.label}เกิดจากการจองของลูกค้า — แอดมินแก้ไขหรือลบได้ (เพิ่มใหม่ที่หน้าลูกค้า)`;
+    note.textContent = m.canCreate ? '' : T('{label}เกิดจากการจองของลูกค้า — แอดมินแก้ไขหรือลบได้ (เพิ่มใหม่ที่หน้าลูกค้า)', { label: m.label });
     $('admin-search').value = '';
-    $('admin-body').innerHTML = `<tr><td class="empty">กำลังโหลดข้อมูลจากฐานข้อมูล...</td></tr>`;
+    $('admin-body').innerHTML = `<tr><td class="empty">${T('กำลังโหลดข้อมูลจากฐานข้อมูล...')}</td></tr>`;
     $('admin-head').innerHTML = '';
     if (push) history.replaceState(null, '', '/admin/data?t=' + key);
     load();
@@ -163,7 +169,7 @@
 
   function fieldHtml(f, value) {
     const id = 'f-' + f.name;
-    const req = f.required ? ' <span class="required-mark">*</span>' : ' <span class="optional">(ไม่บังคับ)</span>';
+    const req = f.required ? ' <span class="required-mark">*</span>' : ` <span class="optional">${T('(ไม่บังคับ)')}</span>`;
     const v = value === null || value === undefined ? '' : value;
     const common = `id="${id}" name="${esc(f.name)}" ${f.required ? 'required' : ''}`;
     let input;
@@ -175,7 +181,7 @@
         const opts = f.options ? f.options.map(([val, label]) => ({ value: val, label }))
           : (data.lookups[f.lookup] || []);
         input = `<select ${common}>
-          ${f.required ? '' : `<option value="">${esc(f.placeholder || '— ไม่ระบุ —')}</option>`}
+          ${f.required ? '' : `<option value="">${esc(f.placeholder || T('— ไม่ระบุ —'))}</option>`}
           ${opts.map(o => `<option value="${esc(o.value)}" ${String(o.value) === String(v) ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
         </select>`;
         break;
@@ -193,7 +199,7 @@
         input = `<input type="date" ${common} value="${esc(String(v).slice(0, 10))}">`;
         break;
       case 'password':
-        input = `<input type="password" ${common.replace('required', '')} autocomplete="new-password" minlength="${f.minLength || ''}" placeholder="${editingId ? 'เว้นว่าง = ไม่เปลี่ยน' : ''}">`;
+        input = `<input type="password" ${common.replace('required', '')} autocomplete="new-password" minlength="${f.minLength || ''}" placeholder="${editingId ? esc(T('เว้นว่าง = ไม่เปลี่ยน')) : ''}">`;
         break;
       default:
         input = `<input type="text" ${common} value="${esc(v)}" maxlength="${f.maxLength || ''}"
@@ -213,8 +219,8 @@
     const m = META[current];
     editingId = id;
     const row = id ? data.rows.find(r => String(r[m.pk]) === String(id)) : null;
-    if (id && !row) { toast('ไม่พบข้อมูลนี้แล้ว (อาจถูกลบไปก่อนหน้า)', 'error'); return; }
-    $('edit-title').textContent = id ? `แก้ไข${m.label} #${id}` : `เพิ่ม${m.label}ใหม่`;
+    if (id && !row) { toast(T('ไม่พบข้อมูลนี้แล้ว (อาจถูกลบไปก่อนหน้า)'), 'error'); return; }
+    $('edit-title').textContent = id ? T('แก้ไข{label} #{id}', { label: m.label, id }) : T('เพิ่ม{label}ใหม่', { label: m.label });
     $('edit-fields').innerHTML = m.fields.map(f => fieldHtml(f, row ? row[f.name] : f.default)).join('');
     $('edit-msg').className = 'form-msg';
     $('edit-msg').textContent = '';
@@ -239,7 +245,7 @@
     const missing = m.fields.find(f => f.required && !String(body[f.name] || '').trim());
     if (missing) {
       $('edit-msg').className = 'form-msg error';
-      $('edit-msg').textContent = `กรุณากรอก "${missing.label}"`;
+      $('edit-msg').textContent = T('กรุณากรอก "{label}"', { label: missing.label });
       markField(missing.name);
       return;
     }
@@ -247,7 +253,7 @@
     const btn = $('edit-save');
     btn.disabled = true;
     $('edit-msg').className = 'form-msg';
-    $('edit-msg').textContent = 'กำลังบันทึกลงฐานข้อมูล...';
+    $('edit-msg').textContent = T('กำลังบันทึกลงฐานข้อมูล...');
     try {
       const res = editingId
         ? await api('PUT', `/api/admin/${current}/${editingId}`, body)
@@ -263,7 +269,7 @@
       }
     } catch (err) {
       $('edit-msg').className = 'form-msg error';
-      $('edit-msg').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+      $('edit-msg').textContent = T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     } finally {
       btn.disabled = false;
     }
@@ -275,7 +281,7 @@
   async function openDelete(id) {
     deletingId = id;
     const dlg = $('delete-dialog');
-    $('delete-target').textContent = 'กำลังตรวจสอบข้อมูลที่ผูกอยู่...';
+    $('delete-target').textContent = T('กำลังตรวจสอบข้อมูลที่ผูกอยู่...');
     $('delete-impact').innerHTML = '';
     $('delete-msg').textContent = '';
     $('delete-confirm').disabled = true;
@@ -287,20 +293,20 @@
       return;
     }
     if (res.blocked) {
-      $('delete-target').innerHTML = `<strong>${esc(res.title)}</strong> ลบไม่ได้`;
+      $('delete-target').innerHTML = T('{title} ลบไม่ได้', { title: `<strong>${esc(res.title)}</strong>` });
       $('delete-msg').className = 'form-msg warn';
       $('delete-msg').textContent = res.blocked;
       $('delete-confirm').hidden = true;
       return;
     }
     $('delete-confirm').hidden = false;
-    $('delete-target').innerHTML = `ลบ <strong>${esc(res.title)}</strong> ออกจากฐานข้อมูล`;
+    $('delete-target').innerHTML = T('ลบ {title} ออกจากฐานข้อมูล', { title: `<strong>${esc(res.title)}</strong>` });
     $('delete-impact').innerHTML = res.items.length
-      ? `<p class="impact-head">ข้อมูลที่ผูกอยู่และจะถูกจัดการไปด้วย:</p>
-         <ul class="impact-list">${res.items.map(it => `<li class="${it.warn ? 'warn' : ''}">${esc(it.label)}: <strong>${it.count}</strong> รายการ</li>`).join('')}</ul>`
-      : '<p class="muted">ไม่มีข้อมูลอื่นผูกอยู่</p>';
+      ? `<p class="impact-head">${T('ข้อมูลที่ผูกอยู่และจะถูกจัดการไปด้วย:')}</p>
+         <ul class="impact-list">${res.items.map(it => `<li class="${it.warn ? 'warn' : ''}">${esc(it.label)}: ${T('{count} รายการ', { count: `<strong>${it.count}</strong>` })}</li>`).join('')}</ul>`
+      : `<p class="muted">${T('ไม่มีข้อมูลอื่นผูกอยู่')}</p>`;
     $('delete-msg').className = 'form-msg warn';
-    $('delete-msg').textContent = 'ลบแล้วกู้คืนไม่ได้';
+    $('delete-msg').textContent = T('ลบแล้วกู้คืนไม่ได้');
     $('delete-confirm').disabled = false;
   }
 
@@ -308,7 +314,7 @@
     const btn = $('delete-confirm');
     btn.disabled = true;
     $('delete-msg').className = 'form-msg';
-    $('delete-msg').textContent = 'กำลังลบ...';
+    $('delete-msg').textContent = T('กำลังลบ...');
     try {
       const res = await api('DELETE', `/api/admin/${current}/${deletingId}`);
       if (res.ok) {
@@ -322,7 +328,7 @@
       }
     } catch (err) {
       $('delete-msg').className = 'form-msg error';
-      $('delete-msg').textContent = 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้';
+      $('delete-msg').textContent = T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
       btn.disabled = false;
     }
   });
