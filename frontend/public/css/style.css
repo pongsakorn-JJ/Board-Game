@@ -1433,3 +1433,24 @@ body:not(:has(.auth-card))::after {
   font-size: clamp(2rem, 1.5rem + 1.6vw, 2.5rem); font-weight: 700; color: #fff;
   text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(160, 140, 255, 0.55);
 }
+
+/* =========================================================
+   มาตรฐานขนาดการ์ดบอร์ดเกม — ทุกการ์ดสูงเท่ากัน ตารางไม่เพี้ยน
+   (รูปปกแนวตั้ง/แนวนอน ชื่อยาว คำอธิบายสั้น-ยาว ไม่ทำให้การ์ดโตไม่เท่ากันอีก)
+   ========================================================= */
+.game-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); align-items: start; }
+.game-card { min-width: 0; }
+
+/* ปก: อัตราส่วนคงที่ 8:5 รูปทุกขนาดถูกครอปให้พอดี (ไม่ดันความสูงปกตามขนาดรูป) */
+.game-cover { flex: none; aspect-ratio: 8 / 5; height: auto; overflow: hidden; }
+.game-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* ข้อความ: ชื่อ 1 บรรทัด · ข้อมูลเกมสูงขั้นต่ำ 3 แถว · คำอธิบาย 3 บรรทัดเท่ากัน */
+.game-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.game-meta { min-height: 4.4em; align-content: flex-start; }
+.game-desc {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden;
+  min-height: calc(3 * 1.7em);
+}
+.btn-3d { flex: none; }
+.game-actions:not(:empty) { min-height: 44px; }
