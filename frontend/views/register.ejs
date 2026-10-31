@@ -1,0 +1,37 @@
+<%- include('partials/header') %>
+
+<div class="auth-hero"><img src="/images/brand/logo-hd.webp" alt="<%= t('Bluff Chain บลัฟเชน') %>" width="760" height="686"></div>
+
+<section class="auth-card">
+  <p class="hint"><%= t('สมัครแล้วจองโต๊ะ เข้าคิว และดูประวัติ/แต้มสะสมของตัวเองได้ ·') %> <b class="hl-cyan"><%= t('เคยจองที่ร้านแล้วใช้เบอร์เดิมสมัครได้เลย') %></b> <b class="hl-gold"><%= t('ประวัติและแต้มยังอยู่ครบ') %></b></p>
+
+  <% if (error) { %><p class="form-msg error auth-error" role="alert"><%= error %></p><% } %>
+
+  <form method="post" action="/register" class="auth-form" autocomplete="on">
+    <div class="auth-row">
+      <label><%= t('ชื่อ') %>
+        <span class="field field-user"><input type="text" name="firstName" value="<%= values.firstName || '' %>" required maxlength="50" autocomplete="given-name" autofocus></span>
+      </label>
+      <label><%= t('นามสกุล') %>
+        <span class="field field-user"><input type="text" name="lastName" value="<%= values.lastName || '' %>" required maxlength="50" autocomplete="family-name"></span>
+      </label>
+    </div>
+    <label><%= t('เบอร์โทร') %> <span class="optional"><%= t('(ใช้เข้าสู่ระบบ)') %></span>
+      <span class="field field-phone"><input type="tel" name="phone" value="<%= values.phone || '' %>" required pattern="0[0-9]{8,9}" maxlength="10" inputmode="numeric"
+             placeholder="<%= t('เช่น 0812345678') %>" title="<%= t('ตัวเลข 9-10 หลัก ขึ้นต้นด้วย 0') %>" autocomplete="tel"></span>
+    </label>
+    <div class="auth-row">
+      <label><%= t('รหัสผ่าน') %> <span class="optional"><%= t('(อย่างน้อย 6 ตัว)') %></span>
+        <span class="field field-lock field-pass"><input type="password" name="password" required minlength="6" autocomplete="new-password"><button type="button" class="pass-toggle" aria-pressed="false" aria-label="<%= t('แสดงรหัสผ่าน') %>"></button></span>
+      </label>
+      <label><%= t('ยืนยันรหัสผ่าน') %>
+        <span class="field field-lock field-pass"><input type="password" name="confirm" required minlength="6" autocomplete="new-password"><button type="button" class="pass-toggle" aria-pressed="false" aria-label="<%= t('แสดงรหัสผ่าน') %>"></button></span>
+      </label>
+    </div>
+    <button type="submit" class="btn-primary btn-block"><%= t('สมัครสมาชิก') %></button>
+  </form>
+
+  <p class="auth-foot"><%= t('มีบัญชีแล้ว?') %> <a href="/login"><%= t('เข้าสู่ระบบ') %></a></p>
+</section>
+
+<%- include('partials/footer', { extraScripts: ['/js/bg-intro.js', '/js/sparkle.js', '/js/auth-ui.js'] }) %>

@@ -1,0 +1,8 @@
+<%- include('partials/header') %>
+
+<section class="auth-card">
+  <p class="form-msg error auth-error"><%= message %></p>
+  <p><%= t('บัญชีนี้ไม่มีสิทธิ์เปิดหน้านี้ — กลับไปที่') %> <a href="/"><%= t('หน้าหลัก') %></a> <%= t('หรือออกจากระบบแล้วเข้าด้วยบัญชีที่มีสิทธิ์') %></p>
+</section>
+
+<%- include('partials/footer') %>

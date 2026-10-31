@@ -1,0 +1,10 @@
+  </main>
+  <script>window.__user = <%- JSON.stringify(user ? { role: user.role } : null) %>;</script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>window.__lang = <%- JSON.stringify(lang || 'th') %>;</script>
+  <script src="<%= typeof asset === 'function' ? asset('/js/i18n.en.js') : '/js/i18n.en.js' %>"></script>
+  <script src="<%= typeof asset === 'function' ? asset('/js/i18n.js') : '/js/i18n.js' %>"></script>
+  <script src="<%= typeof asset === 'function' ? asset('/js/realtime.js') : '/js/realtime.js' %>"></script>
+  <% if (typeof extraScripts !== 'undefined') { extraScripts.forEach(src => { %><script src="<%= typeof asset === 'function' ? asset(src) : src %>"></script>
+  <% }) } %></body>
+</html>

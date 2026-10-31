@@ -1,0 +1,32 @@
+<%- include('partials/header') %>
+
+<p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
+
+<section class="summary-cards">
+  <div class="card card-rental">
+    <div class="card-value" id="rent-active">-</div>
+    <div class="card-label"><%= t('กำลังเช่าอยู่') %></div>
+  </div>
+  <div class="card card-busy ic-overdue">
+    <div class="card-value" id="rent-overdue">-</div>
+    <div class="card-label"><%= t('เกินกำหนดคืน') %></div>
+  </div>
+</section>
+
+<p class="empty" id="rentals-empty" hidden><%= t('ยังไม่มีรายการเช่ากลับบ้าน') %></p>
+
+<div class="table-scroll">
+  <table class="data-table" id="rentals-table">
+    <thead>
+      <tr>
+        <th><%= t('บิล') %></th><th><%= t('ลูกค้า') %></th><th><%= t('เกม') %></th><th><%= t('วันที่เช่า') %></th><th><%= t('กำหนดคืน') %></th>
+        <th><%= t('ค่าเช่า / มัดจำ') %></th><th><%= t('สถานะ') %></th><th><%= t('คืนเกม') %></th>
+      </tr>
+    </thead>
+    <tbody id="rentals-body"></tbody>
+  </table>
+</div>
+
+<script>window.__initialState = <%- initialStateJson %>;</script>
+
+<%- include('partials/footer') %>

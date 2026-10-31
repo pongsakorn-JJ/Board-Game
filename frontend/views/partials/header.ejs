@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> | Bluff Chain<%= lang === 'th' ? ' บลัฟเชน' : '' %></title>
+  <link rel="icon" type="image/png" href="/images/brand/favicon.png">
+  <link rel="apple-touch-icon" href="/images/brand/apple-touch-icon.png">
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <meta name="theme-color" content="#0b0d14">
+  <link rel="stylesheet" href="<%= typeof asset === 'function' ? asset('/css/style.css') : '/css/style.css' %>">
+</head>
+<body class="<%= [user && user.role === 'admin' ? 'is-admin' : '', 'app-tavern', user ? '' : 'is-guest'].filter(Boolean).join(' ') %>">
+  <%
+    // ไอคอนเส้น (SVG) ใช้ทั้งเมนูบนและแถบด้านซ้าย
+    const ICON = {
+      home: '<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/>',
+      dice: '<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><circle cx="8.5" cy="8.5" r="1.3"/><circle cx="15.5" cy="15.5" r="1.3"/><circle cx="15.5" cy="8.5" r="1.3"/><circle cx="8.5" cy="15.5" r="1.3"/><circle cx="12" cy="12" r="1.3"/>',
+      box: '<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
+      chart: '<path d="M3 20h18"/><path d="M6 16v-5M11 16V6M16 16v-8M21 16v-3" />',
+      data: '<ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v13c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8v-13M4.5 12c0 1.5 3.4 2.8 7.5 2.8s7.5-1.3 7.5-2.8"/>',
+      calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M16 3v4M8 3v4M3.5 10h17"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/>',
+      key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 8.5-8.5M16.5 6.5l2.5 2.5M14 9l2 2"/>',
+      logout: '<path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 16l4-4-4-4M20 12H9"/>',
+      login: '<path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 16l4-4-4-4M14 12H3"/>',
+      userplus: '<circle cx="9.5" cy="8" r="4"/><path d="M2.5 21c0-4 3.1-7 7-7s7 3 7 7M19 8v6M16 11h6"/>'
+    };
+    const icon = (k) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICON[k]}</svg>`;
+    const NAV = !user ? [] : user.role === 'admin'
+      ? [['/dashboard', 'home', t('สถานะโต๊ะ')], ['/games', 'dice', t('บอร์ดเกม')], ['/rentals', 'box', t('เช่ากลับบ้าน')], ['/revenue', 'chart', t('รายได้')], ['/admin/data', 'data', t('จัดการข้อมูล')]]
+      : [['/booking', 'calendar', t('จองโต๊ะ / เช่าเกม')], ['/games', 'dice', t('บอร์ดเกม')], ['/me', 'user', t('บัญชีของฉัน')]];
+    const navLink = (href, label, extra) =>
+      `<a href="${href}" class="${currentPath === href ? 'active' : ''}">${label}${extra || ''}</a>`;
+    const queueBadge = '<span id="nav-queue-badge" class="nav-count" style="display:none;" title="' + t('จำนวนคิวที่รออยู่') + '">0</span>';
+    const gameBadge = '<span id="nav-game-badge" class="nav-count nav-count-hint" hidden title="' + t('โต๊ะของคุณยังไม่ได้เลือกเกม') + '">' + t('เลือกเกม') + '</span>';
+  %>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="<%= t('Bluff Chain บลัฟเชน หน้าแรก') %>">
+      <img class="brand-logo" src="/images/brand/icon.png" alt="" width="40" height="40">
+      <span class="brand-words"><span class="brand-text">Bluff Chain</span><small class="brand-sub"><%= t('บลัฟเชน · บอร์ดเกมคาเฟ่') %></small></span>
+    </a>
+    <nav>
+      <% if (user) { NAV.forEach(([href, ic, label]) => { %>
+        <a href="<%= href %>" class="<%= currentPath === href ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span><% if (href === '/dashboard') { %> <%- queueBadge %><% } else if (href === '/games' && user.role !== 'admin') { %> <%- gameBadge %><% } %></a>
+      <% }) %>
+      <% } else { [['/games', 'dice', t('บอร์ดเกม')], ['/login', 'login', t('เข้าสู่ระบบ')], ['/register', 'userplus', t('สมัครสมาชิก')]].forEach(([href, ic, label]) => { %>
+        <a href="<%= href %>" class="<%= currentPath === href ? 'active' : '' %>"><%- icon(ic) %><span><%= label %></span></a>
+      <% }) } %>
+    </nav>
+    <div class="topbar-right">
+      <div class="lang-switch" role="group" aria-label="Language">
+        <a href="/lang/th" class="<%= lang === 'th' ? 'active' : '' %>" hreflang="th" lang="th">TH</a>
+        <a href="/lang/en" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en" lang="en">EN</a>
+      </div>
+      <div class="live-indicator" id="live-indicator" title="<%= t('สถานะการเชื่อมต่อเรียลไทม์') %>">
+        <span class="dot" id="live-dot"></span>
+        <span id="live-text"><%= t('กำลังเชื่อมต่อ...') %></span>
+      </div>
+      <% if (user) { %>
+        <div class="user-menu">
+          <span class="user-chip <%= user.role === 'admin' ? 'is-admin' : '' %>" title="<%= user.role === 'admin' ? t('พนักงาน') : t('ลูกค้า') %>">
+            <span class="avatar" aria-hidden="true"><%= String(user.name || '?').trim().replace(/^[เแโใไ]/, '').charAt(0).toUpperCase() %></span><%= user.name %>
+            <small><%= user.role === 'admin' ? t('พนักงาน') : t('ลูกค้า') %></small>
+          </span>
+          <a href="/account/password" class="user-link"><%= t('เปลี่ยนรหัสผ่าน') %></a>
+          <form method="post" action="/logout" class="logout-form">
+            <button type="submit" class="btn-logout"><%= t('ออกจากระบบ') %></button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  </header>
+  <% if (user) { %>
+  <aside class="side-rail" aria-label="<%= t('เมนูหลัก') %>">
+    <nav class="rail-top">
+      <% NAV.forEach(([href, ic, label]) => { %>
+        <a href="<%= href %>" class="rail-btn <%= currentPath === href ? 'active' : '' %>" title="<%= label %>" aria-label="<%= label %>"><%- icon(ic) %></a>
+      <% }) %>
+    </nav>
+    <div class="rail-bottom">
+      <a href="/account/password" class="rail-btn <%= currentPath === '/account/password' ? 'active' : '' %>" title="<%= t('เปลี่ยนรหัสผ่าน') %>" aria-label="<%= t('เปลี่ยนรหัสผ่าน') %>"><%- icon('key') %></a>
+      <form method="post" action="/logout">
+        <button type="submit" class="rail-btn rail-logout" title="<%= t('ออกจากระบบ') %>" aria-label="<%= t('ออกจากระบบ') %>"><%- icon('logout') %></button>
+      </form>
+    </div>
+  </aside>
+  <% } %>
+  <main class="container" data-page="<%= currentPath %>">
+    <h1><%= title %></h1>
+    <div id="toast-area" class="toast-area"></div>

@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+
+<p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
+
+<section class="me-profile" id="me-profile"></section>
+
+<h2 class="subheading sub-ic sub-now"><%= t('ตอนนี้') %></h2>
+<section id="my-status" class="my-status" aria-live="polite"></section>
+
+<h2 class="subheading sub-ic sub-history"><%= t('ประวัติการเล่นที่ร้าน') %></h2>
+<div class="table-scroll">
+  <table class="data-table" id="me-sessions-table">
+    <thead><tr><th><%= t('วันที่') %></th><th><%= t('โต๊ะ') %></th><th><%= t('แพ็กเกจ') %></th><th><%= t('เกมที่เล่น') %></th><th><%= t('ยอดชำระ (บาท)') %></th><th><%= t('สถานะ') %></th></tr></thead>
+    <tbody id="me-sessions"></tbody>
+  </table>
+</div>
+<p class="empty" id="me-sessions-empty" hidden><%= t('ยังไม่มีประวัติการจองโต๊ะ') %></p>
+
+<h2 class="subheading sub-ic sub-package"><%= t('ประวัติเช่ากลับบ้าน') %></h2>
+<div class="table-scroll">
+  <table class="data-table" id="me-rentals-table">
+    <thead><tr><th><%= t('บิล') %></th><th><%= t('เกม') %></th><th><%= t('วันที่เช่า') %></th><th><%= t('กำหนดคืน') %></th><th><%= t('ค่าเช่า / มัดจำ') %></th><th><%= t('สถานะ') %></th></tr></thead>
+    <tbody id="me-rentals"></tbody>
+  </table>
+</div>
+<p class="empty" id="me-rentals-empty" hidden><%= t('ยังไม่เคยเช่ากลับบ้าน') %></p>
+
+<script>
+  window.__initialState = <%- initialStateJson %>;
+  window.__me = <%- meJson %>;
+</script>
+
+<%- include('partials/footer') %>

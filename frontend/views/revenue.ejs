@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+
+<%
+  const money = (n) => Number(n || 0).toLocaleString(locale, { maximumFractionDigits: 2 });
+  const dkey = (d) => new Date(d).toLocaleDateString(locale);
+  const todayKey = new Date().toLocaleDateString(locale);
+  const total = rows.reduce((s, r) => s + Number(r.TotalRevenue || 0), 0);
+  const today = rows.filter(r => dkey(r.RevenueDate) === todayKey).reduce((s, r) => s + Number(r.TotalRevenue || 0), 0);
+  const maxDay = Math.max(1, ...rows.map(r => Number(r.TotalRevenue || 0)));
+  const tableBills = details.filter(d => d.Type === 'โต๊ะ').length;
+  const rentalBills = details.length - tableBills;
+  const STATUS = {
+    Active: [t('กำลังเล่น'), 'badge-busy'], Completed: [t('เสร็จแล้ว'), ''],
+    Rented: [t('กำลังเช่า'), ''], Returned: [t('คืนแล้ว'), 'badge-free'], Overdue: [t('เกินกำหนด'), 'badge-busy']
+  };
+%>
+
+
+<section class="summary-cards">
+  <div class="card card-free ic-coins">
+    <div class="card-value"><%= money(today) %> ฿</div>
+    <div class="card-label"><%= t('รายได้วันนี้') %></div>
+  </div>
+  <div class="card card-total">
+    <div class="card-value"><%= money(total) %> ฿</div>
+    <div class="card-label"><%= t('รายได้รวมทั้งหมด') %></div>
+  </div>
+  <div class="card card-queue ic-table">
+    <div class="card-value"><%= tableBills %></div>
+    <div class="card-label"><%= t('บิลค่าโต๊ะ') %></div>
+  </div>
+  <div class="card card-rental">
+    <div class="card-value"><%= rentalBills %></div>
+    <div class="card-label"><%= t('บิลเช่ากลับบ้าน') %></div>
+  </div>
+</section>
+
+<h2 class="subheading"><%= t('สรุปรายได้รายวัน') %></h2>
+<% if (rows.length === 0) { %>
+  <p class="empty"><%= t('ยังไม่มีรายได้') %></p>
+<% } else { %>
+  <div class="table-scroll">
+    <table class="data-table revenue-days">
+      <thead>
+        <tr><th><%= t('วันที่') %></th><th class="num"><%= t('รายได้รวม (บาท)') %></th><th class="bar-col"><%= t('สัดส่วน') %></th></tr>
+      </thead>
+      <tbody>
+        <% rows.forEach(r => { const v = Number(r.TotalRevenue || 0); %>
+          <tr class="<%= dkey(r.RevenueDate) === todayKey ? 'is-today' : '' %>">
+            <td><%= new Date(r.RevenueDate).toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) %>
+              <% if (dkey(r.RevenueDate) === todayKey) { %><span class="badge badge-free"><%= t('วันนี้') %></span><% } %></td>
+            <td class="num"><strong><%= money(v) %></strong></td>
+            <td class="bar-col"><div class="rev-bar" aria-hidden="true"><span style="width: <%= Math.max(2, Math.round(v / maxDay * 100)) %>%"></span></div></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<h2 class="subheading"><%= t('รายละเอียดรายการจอง / เช่า') %></h2>
+<% if (details.length === 0) { %>
+  <p class="empty"><%= t('ยังไม่มีรายการ') %></p>
+<% } else { %>
+  <div class="table-scroll">
+    <table class="data-table">
+      <thead>
+        <tr><th><%= t('ประเภท') %></th><th><%= t('วันที่ / เวลา') %></th><th><%= t('รายละเอียด') %></th><th><%= t('ลูกค้า') %></th><th class="num"><%= t('จำนวนเงิน (บาท)') %></th><th><%= t('สถานะ') %></th></tr>
+      </thead>
+      <tbody>
+        <% details.forEach(d => { const st = STATUS[d.Status] || [d.Status, '']; %>
+          <tr>
+            <td><span class="badge <%= d.Type === 'โต๊ะ' ? 'type-table' : 'type-rental' %>"><%= d.Type === 'โต๊ะ' ? t('🪑 โต๊ะ') : t('🏠 เช่ากลับบ้าน') %></span></td>
+            <td><%= new Date(d.TxnDate).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) %></td>
+            <td><%= tr(d.Detail) %></td>
+            <td><%= d.CustomerName %></td>
+            <td class="num"><%= money(d.Amount) %></td>
+            <td><span class="badge <%= st[1] %>"><%= st[0] %></span></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>
