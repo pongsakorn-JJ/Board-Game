@@ -1,6 +1,6 @@
 <%- include('partials/header') %>
 
-<p class="hint"><%= t('ข้อมูลของคุณอัปเดตอัตโนมัติ (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+<p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
 
 <section class="me-profile" id="me-profile"></section>
 
@@ -23,7 +23,7 @@
     <tbody id="me-rentals"></tbody>
   </table>
 </div>
-<p class="empty" id="me-rentals-empty" hidden><%= t('ยังไม่เคยเช่ากลับบ้าน — ติดต่อพนักงานที่เคาน์เตอร์ (ต้องใช้บัตรประชาชน)') %></p>
+<p class="empty" id="me-rentals-empty" hidden><%= t('ยังไม่เคยเช่ากลับบ้าน') %></p>
 
 <script>
   window.__initialState = <%- initialStateJson %>;

@@ -132,6 +132,7 @@
 
     const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
     set('stat-free', state.tables.filter(t => t.Status === 'Available').length);
+    set('stat-free-sub', T('ว่าง {n} จาก {total} โต๊ะ', { n: state.tables.filter(t => t.Status === 'Available').length, total: state.tables.length }));
     set('stat-busy', state.tables.filter(t => t.Status === 'Occupied').length);
     set('stat-queue', state.queue.length);
     set('stat-borrowed', new Set(state.borrowed.map(b => b.SessionID)).size);
@@ -272,7 +273,6 @@
           <div class="status-title">${T('🪑 โต๊ะ #{id} ของคุณกำลังเล่น', { id: a.TableID })}</div>
           <div class="status-meta my-game-now">${img ? `<img src="${escapeHtml(img.getAttribute('src'))}" alt="">` : ''}
             <span>🎲 <strong>${escapeHtml(a.GameName)}</strong>${a.GameSince ? T(' · หยิบเมื่อ {time}', { time: fmtTime(a.GameSince) }) : ''}</span></div>
-          <div class="status-meta muted">${T('อยากเล่นเกมอื่น? กด "คืนเกมนี้" ก่อน แล้วเลือกเกมใหม่ด้านล่าง')}</div>
         </div>
         <button type="button" class="btn-return-game" data-my-return>${T('↩ คืนเกมนี้')}</button>
       </div>`;

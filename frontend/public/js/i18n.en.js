@@ -7,6 +7,18 @@
 })(typeof self !== 'undefined' ? self : this, function () {
   const dict = {
     // ===== page titles / navigation / common =====
+    "อัปเดตล่าสุด": "Last updated",
+    "ว่าง {n} จาก {total} โต๊ะ": "{n} of {total} tables free",
+    "รายการล่าสุด": "Recent transactions",
+    "ดูทั้งหมด": "View all",
+    "รายได้รวม": "Total",
+    "ค่าโต๊ะ": "Tables",
+    "รายได้ 7 วันล่าสุด": "Revenue, last 7 days",
+    "ดูรายได้ทั้งหมด": "Full revenue report",
+    "เมนูหลัก": "Main menu",
+    "ยังไม่มีคำอธิบาย": "No description yet",
+    "ยังไม่มีวิธีเล่น": "No how-to-play yet",
+    "ยังไม่เคยเช่ากลับบ้าน": "No take-home rentals yet",
     "จองโต๊ะ / เช่ากลับบ้าน": "Book a Table / Rent to Take Home",
     "สถานะโต๊ะ": "Table Status",
     "เลือกบอร์ดเกม": "Choose a Board Game",

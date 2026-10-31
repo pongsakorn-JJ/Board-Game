@@ -15,22 +15,21 @@
   };
 %>
 
-<p class="hint"><%= t('รายได้ = ค่าโต๊ะที่ชำระ (tbl_session) + ค่าเช่ากลับบ้าน (tbl_offsiterental) · สรุปรายวันจาก View') %> <code>vw_DailyRevenue</code></p>
 
 <section class="summary-cards">
-  <div class="card card-free">
+  <div class="card card-free ic-coins">
     <div class="card-value"><%= money(today) %> ฿</div>
     <div class="card-label"><%= t('รายได้วันนี้') %></div>
   </div>
-  <div class="card">
+  <div class="card card-total">
     <div class="card-value"><%= money(total) %> ฿</div>
     <div class="card-label"><%= t('รายได้รวมทั้งหมด') %></div>
   </div>
-  <div class="card">
+  <div class="card card-queue ic-table">
     <div class="card-value"><%= tableBills %></div>
     <div class="card-label"><%= t('บิลค่าโต๊ะ') %></div>
   </div>
-  <div class="card">
+  <div class="card card-rental">
     <div class="card-value"><%= rentalBills %></div>
     <div class="card-label"><%= t('บิลเช่ากลับบ้าน') %></div>
   </div>

@@ -1,41 +1,190 @@
 <%- include('partials/header') %>
 
-<section class="summary-cards" id="summary-cards">
-  <div class="card card-free">
-    <div class="card-value" id="stat-free">-</div>
-    <div class="card-label"><%= t('โต๊ะว่าง') %></div>
-  </div>
-  <div class="card card-busy">
-    <div class="card-value" id="stat-busy">-</div>
-    <div class="card-label"><%= t('โต๊ะไม่ว่าง') %></div>
-  </div>
-  <div class="card">
-    <div class="card-value" id="stat-queue">-</div>
-    <div class="card-label"><%= t('คิวรอ') %></div>
-  </div>
-  <div class="card">
-    <div class="card-value" id="stat-borrowed">-</div>
-    <div class="card-label"><%= t('โต๊ะที่กำลังเล่นเกม') %></div>
-  </div>
-</section>
+<%
+  // ----- ข้อมูลรายได้ (กล่องขวา) -----
+  const money = (n) => Number(n || 0).toLocaleString(locale, { maximumFractionDigits: 0 });
+  const ymd = (d) => { const x = new Date(d); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+  const rev = revenue || { days: [], recent: [] };
+  const byDay = {};
+  rev.days.forEach(r => { byDay[ymd(r.RevenueDate)] = { t: Number(r.TableRevenue || 0), r: Number(r.RentalRevenue || 0) }; });
+  const allTotal = rev.days.reduce((s, r) => s + Number(r.TableRevenue || 0) + Number(r.RentalRevenue || 0), 0);
+  // 7 วันล่าสุด (รวมวันนี้) — วันที่ไม่มีรายการ = 0
+  const week = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setHours(12, 0, 0, 0); d.setDate(d.getDate() - i);
+    const v = byDay[ymd(d)] || { t: 0, r: 0 };
+    week.push({ label: d.toLocaleDateString(locale, { day: 'numeric', month: 'short' }), full: d.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' }), table: v.t, rental: v.r, total: v.t + v.r });
+  }
+  const todayTotal = week[6].total;
 
-<p class="hint"><%= t('🟢 ว่าง · 🔴 ไม่ว่าง — 1 โต๊ะหยิบได้ครั้งละ 1 เกม: กด "คืนเกม" ก่อนแล้วค่อยเลือกเกมใหม่ · อัปเดตเรียลไทม์ (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+  // ----- กราฟเส้น (SVG วาดฝั่งเซิร์ฟเวอร์ ไม่ต้องใช้ไลบรารี) -----
+  const W = 320, H = 196, L = 40, R = 10, T = 14, B = 26;
+  const maxV = Math.max(10, ...week.map(w => w.total));
+  // แกน Y: 4 ช่องเท่ากัน ช่องละ 1 / 2 / 5 × 10ⁿ (เลขกลม ไม่มีทศนิยม)
+  const mag = Math.pow(10, Math.floor(Math.log10(maxV / 4)));
+  const step = [1, 2, 5, 10].map(k => k * mag).find(v => v * 4 >= maxV && v >= 1) || 10 * mag;
+  const top = step * 4;
+  const X = (i) => L + i * (W - L - R) / 6;
+  const Y = (v) => T + (1 - v / top) * (H - T - B);
+  const smooth = (vals) => {               // เส้นโค้งนุ่ม (Catmull-Rom → Bézier)
+    const p = vals.map((v, i) => [X(i), Y(v)]);
+    let d = `M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)}`;
+    for (let i = 0; i < p.length - 1; i++) {
+      const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6];
+      const c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+      d += ` C${c1[0].toFixed(1)},${Math.min(c1[1], H - B).toFixed(1)} ${c2[0].toFixed(1)},${Math.min(c2[1], H - B).toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+    }
+    return d;
+  };
+  const series = [
+    { key: 'total', cls: 's-total', name: t('รายได้รวม') },
+    { key: 'table', cls: 's-table', name: t('ค่าโต๊ะ') },
+    { key: 'rental', cls: 's-rental', name: t('เช่ากลับบ้าน') }
+  ];
+  const STATUS = {
+    Active: [t('กำลังเล่น'), 'badge-busy'], Completed: [t('เสร็จแล้ว'), ''],
+    Rented: [t('กำลังเช่า'), ''], Returned: [t('คืนแล้ว'), 'badge-free'], Overdue: [t('เกินกำหนด'), 'badge-busy']
+  };
+%>
 
-<div class="table-scroll">
-  <table class="data-table">
-    <thead>
-      <tr><th><%= t('โต๊ะ') %></th><th><%= t('โซน') %></th><th><%= t('ที่นั่ง') %></th><th><%= t('สถานะ') %></th><th><%= t('ลูกค้า') %></th><th><%= t('เริ่มเล่น') %></th><th><%= t('เหลือเวลา (นาที)') %></th><th><%= t('บอร์ดเกมบนโต๊ะ') %></th><th><%= t('จัดการ') %></th></tr>
-    </thead>
-    <tbody id="tables-body"></tbody>
-  </table>
+<div class="dash-layout">
+  <div class="dash-main">
+    <section class="summary-cards" id="summary-cards">
+      <div class="card card-free">
+        <div class="card-value" id="stat-free">-</div>
+        <div class="card-label"><%= t('โต๊ะว่าง') %></div>
+        <div class="card-sub" id="stat-free-sub"></div>
+      </div>
+      <div class="card card-busy">
+        <div class="card-value" id="stat-busy">-</div>
+        <div class="card-label"><%= t('โต๊ะไม่ว่าง') %></div>
+      </div>
+      <div class="card card-queue">
+        <div class="card-value" id="stat-queue">-</div>
+        <div class="card-label"><%= t('คิวรอ') %></div>
+      </div>
+      <div class="card card-game">
+        <div class="card-value" id="stat-borrowed">-</div>
+        <div class="card-label"><%= t('โต๊ะที่กำลังเล่นเกม') %></div>
+      </div>
+    </section>
+
+    <p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
+
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr><th><%= t('โต๊ะ') %></th><th><%= t('โซน') %></th><th><%= t('ที่นั่ง') %></th><th><%= t('สถานะ') %></th><th><%= t('ลูกค้า') %></th><th><%= t('เริ่มเล่น') %></th><th><%= t('เหลือเวลา (นาที)') %></th><th><%= t('บอร์ดเกมบนโต๊ะ') %></th><th><%= t('จัดการ') %></th></tr>
+        </thead>
+        <tbody id="tables-body"></tbody>
+      </table>
+    </div>
+
+    <section id="queue-section">
+      <h2 class="subheading"><%= t('คิวรอโต๊ะ') %> <span class="muted" id="queue-total"></span></h2>
+      <div id="queue-groups"></div>
+    </section>
+
+    <% if (rev.recent.length) { %>
+    <section class="dash-recent">
+      <h2 class="subheading"><%= t('รายการล่าสุด') %> <a class="subheading-link" href="/revenue"><%= t('ดูทั้งหมด') %> →</a></h2>
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead>
+            <tr><th><%= t('ประเภท') %></th><th><%= t('วันที่ / เวลา') %></th><th><%= t('รายละเอียด') %></th><th><%= t('ลูกค้า') %></th><th class="num"><%= t('จำนวนเงิน (บาท)') %></th><th><%= t('สถานะ') %></th></tr>
+          </thead>
+          <tbody>
+            <% rev.recent.forEach(d => { const st = STATUS[d.Status] || [d.Status, '']; %>
+              <tr>
+                <td><span class="badge <%= d.Type === 'โต๊ะ' ? 'type-table' : 'type-rental' %>"><%= d.Type === 'โต๊ะ' ? t('🪑 โต๊ะ') : t('🏠 เช่ากลับบ้าน') %></span></td>
+                <td><%= new Date(d.TxnDate).toLocaleString(locale, { dateStyle: 'medium', timeStyle: 'short' }) %></td>
+                <td><%= tr(d.Detail) %></td>
+                <td><%= d.CustomerName %></td>
+                <td class="num"><%= money(d.Amount) %></td>
+                <td><span class="badge <%= st[1] %>"><%= st[0] %></span></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <% } %>
+  </div>
+
+  <aside class="dash-side" aria-label="<%= t('รายได้') %>">
+    <h2 class="subheading"><%= t('รายได้') %></h2>
+    <div class="rev-mini">
+      <div class="rev-card is-today">
+        <span class="rev-label"><%= t('รายได้วันนี้') %></span>
+        <strong class="rev-value"><%= money(todayTotal) %> ฿</strong>
+      </div>
+      <div class="rev-card">
+        <span class="rev-label"><%= t('รายได้รวมทั้งหมด') %></span>
+        <strong class="rev-value"><%= money(allTotal) %> ฿</strong>
+      </div>
+    </div>
+
+    <h2 class="subheading"><%= t('รายได้ 7 วันล่าสุด') %></h2>
+    <div class="chart-panel" id="rev-chart">
+      <svg viewBox="0 0 <%= W %> <%= H %>" role="img" aria-label="<%= t('รายได้ 7 วันล่าสุด') %>">
+        <defs>
+          <linearGradient id="area-total" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#5aa8ff" stop-opacity=".35"/><stop offset="1" stop-color="#5aa8ff" stop-opacity="0"/>
+          </linearGradient>
+          <filter id="line-glow" x="-10%" y="-30%" width="120%" height="160%"><feGaussianBlur stdDeviation="2.2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        </defs>
+        <% for (let k = 0; k <= 4; k++) { const v = top * k / 4; %>
+          <line class="grid" x1="<%= L %>" x2="<%= W - R %>" y1="<%= Y(v).toFixed(1) %>" y2="<%= Y(v).toFixed(1) %>"/>
+          <text class="axis" x="<%= L - 6 %>" y="<%= (Y(v) + 3.5).toFixed(1) %>" text-anchor="end"><%= v >= 1000 ? (v / 1000).toLocaleString(locale, { maximumFractionDigits: 1 }) + 'k' : v %></text>
+        <% } %>
+        <% week.forEach((w, i) => { if (i % 2 === 0 || i === 6) { %>
+          <text class="axis" x="<%= X(i).toFixed(1) %>" y="<%= H - 6 %>" text-anchor="middle"><%= i === 6 ? t('วันนี้') : w.label %></text>
+        <% } }) %>
+        <path d="<%= smooth(week.map(w => w.total)) %> L<%= X(6) %>,<%= H - B %> L<%= X(0) %>,<%= H - B %> Z" fill="url(#area-total)"/>
+        <% series.slice().reverse().forEach(s => { %>
+          <path class="line <%= s.cls %>" d="<%= smooth(week.map(w => w[s.key])) %>" filter="url(#line-glow)"/>
+          <% week.forEach((w, i) => { %><circle class="pt <%= s.cls %>" cx="<%= X(i).toFixed(1) %>" cy="<%= Y(w[s.key]).toFixed(1) %>" r="2.6"/><% }) %>
+        <% }) %>
+        <line class="hover-line" id="rev-hover-line" x1="0" x2="0" y1="<%= T %>" y2="<%= H - B %>" hidden/>
+        <% week.forEach((w, i) => { %>
+          <rect class="hit" x="<%= (X(i) - (W - L - R) / 12).toFixed(1) %>" y="<%= T %>" width="<%= ((W - L - R) / 6).toFixed(1) %>" height="<%= H - T - B %>"
+                data-i="<%= i %>" data-x="<%= X(i).toFixed(1) %>"/>
+        <% }) %>
+      </svg>
+      <div class="chart-tip" id="rev-tip" hidden></div>
+      <ul class="chart-legend">
+        <% series.forEach(s => { %><li class="<%= s.cls %>"><%= s.name %></li><% }) %>
+      </ul>
+    </div>
+    <a class="side-link" href="/revenue"><%= t('ดูรายได้ทั้งหมด') %> →</a>
+  </aside>
 </div>
 
-<section id="queue-section">
-  <h2 class="subheading"><%= t('คิวรอโต๊ะ') %> <span class="muted" id="queue-total"></span></h2>
-  <p class="hint"><%= t('ลูกค้าเข้าคิวเองจากหน้าจองโต๊ะ · เมื่อเช็คเอาท์แล้วโต๊ะว่าง กด "เรียกคิวแรกเข้านั่ง" ได้ที่นี่ (บิลจะผูกกับลูกค้าของคิวนั้น)') %></p>
-  <div id="queue-groups"></div>
-</section>
-
 <script>window.__initialState = <%- initialStateJson %>;</script>
+<script>
+  // tooltip ของกราฟรายได้
+  (function () {
+    var week = <%- JSON.stringify(week.map(w => ({ d: w.full, total: w.total, table: w.table, rental: w.rental }))) %>;
+    var names = <%- JSON.stringify(series.map(s => s.name)) %>;
+    var box = document.getElementById('rev-chart'); if (!box) return;
+    var svg = box.querySelector('svg'), tip = document.getElementById('rev-tip'), line = document.getElementById('rev-hover-line');
+    var fmt = function (n) { return Number(n).toLocaleString(<%- JSON.stringify(locale) %>) + ' ฿'; };
+    box.querySelectorAll('.hit').forEach(function (r) {
+      r.addEventListener('mouseenter', function () {
+        var w = week[+r.dataset.i], x = +r.dataset.x;
+        tip.innerHTML = '<b>' + w.d + '</b>' +
+          '<span class="s-total">' + names[0] + ' <em>' + fmt(w.total) + '</em></span>' +
+          '<span class="s-table">' + names[1] + ' <em>' + fmt(w.table) + '</em></span>' +
+          '<span class="s-rental">' + names[2] + ' <em>' + fmt(w.rental) + '</em></span>';
+        tip.hidden = false; line.removeAttribute('hidden');
+        line.setAttribute('x1', x); line.setAttribute('x2', x);
+        var px = x / <%= W %> * svg.clientWidth;
+        tip.style.left = Math.min(Math.max(px, 70), svg.clientWidth - 70) + 'px';
+      });
+    });
+    svg.addEventListener('mouseleave', function () { tip.hidden = true; line.setAttribute('hidden', ''); });
+  })();
+</script>
 
 <%- include('partials/footer') %>

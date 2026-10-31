@@ -124,10 +124,48 @@ router.get('/booking', (req, res, next) => (isAdmin(req) ? res.redirect('/dashbo
 router.get('/queue', (req, res) => res.redirect('/'));
 
 // สถานะโต๊ะทั้งหมด (ว่าง/ไม่ว่าง + เวลาที่เหลือ + เกมที่หยิบอยู่ในแต่ละโต๊ะ)
+// รายการค่าโต๊ะ + ค่าเช่ากลับบ้านทุกบิล (ใช้ทั้งหน้ารายได้และกล่องรายการล่าสุดในหน้าสถานะโต๊ะ)
+const TXN_SQL = `
+  SELECT 'โต๊ะ' AS Type, s.SessionID AS RefID, s.StartTime AS TxnDate,
+         CONCAT('โต๊ะ #', t.TableID, ' — ', tp.PackageName) AS Detail,
+         CASE WHEN c.CustomerID IS NOT NULL THEN CONCAT(c.FirstName, ' ', c.LastName) ELSE 'walk-in' END AS CustomerName,
+         s.AmountPaid AS Amount, s.Status
+  FROM tbl_session s
+  JOIN tbl_table t ON s.TableID = t.TableID
+  JOIN tbl_timepackage tp ON s.PackageID = tp.PackageID
+  LEFT JOIN tbl_customer c ON s.CustomerID = c.CustomerID
+  UNION ALL
+  SELECT 'เช่ากลับบ้าน' AS Type, r.RentalID AS RefID, r.RentalDate AS TxnDate,
+         g.Name AS Detail,
+         CONCAT(c.FirstName, ' ', c.LastName) AS CustomerName,
+         r.RentalFee AS Amount, r.Status
+  FROM tbl_offsiterental r
+  JOIN tbl_boardgame g ON r.GameID = g.GameID
+  JOIN tbl_customer c ON r.CustomerID = c.CustomerID`;
+
+// รายได้รายวันแยกค่าโต๊ะ / ค่าเช่ากลับบ้าน (สำหรับกราฟในหน้าสถานะโต๊ะ) — ยอดรวมเท่ากับ vw_DailyRevenue
+async function getRevenueOverview(pool) {
+  const days = (await pool.request().query(`
+    SELECT CAST(d.RevDate AS DATE) AS RevenueDate,
+           SUM(CASE WHEN d.Kind = 'T' THEN d.Amount ELSE 0 END) AS TableRevenue,
+           SUM(CASE WHEN d.Kind = 'R' THEN d.Amount ELSE 0 END) AS RentalRevenue
+    FROM (
+      SELECT StartTime AS RevDate, AmountPaid AS Amount, 'T' AS Kind FROM tbl_session
+      UNION ALL
+      SELECT RentalDate AS RevDate, RentalFee AS Amount, 'R' AS Kind FROM tbl_offsiterental
+    ) d
+    GROUP BY CAST(d.RevDate AS DATE)
+  `)).recordset;
+  const recent = (await pool.request().query(`SELECT TOP 8 * FROM (${TXN_SQL}) x ORDER BY TxnDate DESC`)).recordset;
+  return { days, recent: recent.slice(0, 8) };
+}
+
 router.get('/dashboard', requireAdmin, async (req, res) => {
   try {
     const state = await realtime.buildState();
-    res.render('dashboard', { title: 'สถานะโต๊ะ', initialStateJson: toScriptJson(state) });
+    let revenue = null;
+    try { revenue = await getRevenueOverview(await getPool()); } catch (e) { console.error('revenue overview:', e.message); }
+    res.render('dashboard', { title: 'สถานะโต๊ะ', initialStateJson: toScriptJson(state), revenue });
   } catch (err) {
     renderDbError(res, err);
   }
@@ -201,25 +239,8 @@ router.get('/revenue', requireAdmin, async (req, res) => {
       SELECT RevenueDate, TotalRevenue FROM vw_DailyRevenue ORDER BY RevenueDate DESC
     `);
 
-    const detailResult = await pool.request().query(`
-      SELECT 'โต๊ะ' AS Type, s.SessionID AS RefID, s.StartTime AS TxnDate,
-             CONCAT('โต๊ะ #', t.TableID, ' — ', tp.PackageName) AS Detail,
-             CASE WHEN c.CustomerID IS NOT NULL THEN CONCAT(c.FirstName, ' ', c.LastName) ELSE 'walk-in' END AS CustomerName,
-             s.AmountPaid AS Amount, s.Status
-      FROM tbl_session s
-      JOIN tbl_table t ON s.TableID = t.TableID
-      JOIN tbl_timepackage tp ON s.PackageID = tp.PackageID
-      LEFT JOIN tbl_customer c ON s.CustomerID = c.CustomerID
-      UNION ALL
-      SELECT 'เช่ากลับบ้าน' AS Type, r.RentalID AS RefID, r.RentalDate AS TxnDate,
-             g.Name AS Detail,
-             CONCAT(c.FirstName, ' ', c.LastName) AS CustomerName,
-             r.RentalFee AS Amount, r.Status
-      FROM tbl_offsiterental r
-      JOIN tbl_boardgame g ON r.GameID = g.GameID
-      JOIN tbl_customer c ON r.CustomerID = c.CustomerID
-      ORDER BY TxnDate DESC
-    `);
+    const detailResult = await pool.request().query(`${TXN_SQL}
+      ORDER BY TxnDate DESC`);
 
     res.render('revenue', {
       title: 'รายได้รายวัน',

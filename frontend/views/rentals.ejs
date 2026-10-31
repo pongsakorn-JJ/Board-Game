@@ -1,13 +1,13 @@
 <%- include('partials/header') %>
 
-<p class="hint"><%= t('ลูกค้าเช่าเองจากหน้า "จองโต๊ะ / เช่าเกม" — บิลใหม่ขึ้นที่นี่ทันที เก็บค่าเช่า+มัดจำและตรวจบัตรประชาชนตอนลูกค้ามารับเกม · คืนเกมกดที่ปุ่มในแต่ละแถว (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+<p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
 
 <section class="summary-cards">
-  <div class="card">
+  <div class="card card-rental">
     <div class="card-value" id="rent-active">-</div>
     <div class="card-label"><%= t('กำลังเช่าอยู่') %></div>
   </div>
-  <div class="card card-busy">
+  <div class="card card-busy ic-overdue">
     <div class="card-value" id="rent-overdue">-</div>
     <div class="card-label"><%= t('เกินกำหนดคืน') %></div>
   </div>

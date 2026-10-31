@@ -7,12 +7,12 @@
 %>
 
 <% if (isCustomer) { %>
-  <p class="hint"><%= t('เลือกเกมให้โต๊ะที่คุณกำลังเล่นได้ตลอดเวลา · 1 โต๊ะเล่นได้ครั้งละ 1 เกม — อยากเปลี่ยนเกมให้กด "คืนเกม" ก่อน แล้วเลือกเกมใหม่ · สต๊อกอัปเดตเรียลไทม์ (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+  <p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
   <section id="my-game-panel" class="my-game-panel" aria-live="polite"></section>
 <% } else { %>
-  <p class="hint"><%= user && user.role === 'admin'
-    ? t('ลูกค้าเลือก/คืนเกมเองได้ที่เมนู "บอร์ดเกม" · พนักงานเปลี่ยนเกมให้ได้ที่หน้า "สถานะโต๊ะ"')
-    : t('เข้าสู่ระบบเพื่อจองโต๊ะและเลือกเกม') %> <%= t('· 1 โต๊ะหยิบได้ครั้งละ 1 เกม · จำนวนคงเหลืออัปเดตเรียลไทม์ (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+  <% if (user) { %><p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p><% } else { %>
+  <p class="hint"><%= t('เข้าสู่ระบบเพื่อจองโต๊ะและเลือกเกม') %> <%= t('· 1 โต๊ะหยิบได้ครั้งละ 1 เกม · จำนวนคงเหลืออัปเดตเรียลไทม์ (อัปเดตล่าสุด') %> <span id="last-updated">-</span>)</p>
+  <% } %>
 <% } %>
 
 <div class="game-filter">
@@ -45,7 +45,7 @@
           <% if (g.PlayTime) { %><span class="meta-item"><i class="mi mi-clock"></i> <%= tr(g.PlayTime) %></span><% } %>
           <span class="meta-item"><i class="mi mi-gauge"></i> <%= t('ระดับ {level}', { level: difficultyTh[g.Difficulty] || g.Difficulty || '-' }) %></span>
         </div>
-        <p class="game-desc"><%= g.ShortDescription ? tr(g.ShortDescription) : t('ยังไม่มีคำอธิบายเกมนี้ — เพิ่มได้ที่คอลัมน์ ShortDescription ในตาราง tbl_boardgame') %></p>
+        <p class="game-desc"><%= g.ShortDescription ? tr(g.ShortDescription) : t('ยังไม่มีคำอธิบาย') %></p>
         <button type="button" class="btn-3d" data-open-3d hidden><%= t('🔍 ดูแบบ 3D 360° และอุปกรณ์ในกล่อง') %></button>
         <p class="game-inuse" data-inuse hidden></p>
         <% if (isCustomer) { %><div class="game-actions" data-my-actions></div><% } %>
@@ -55,7 +55,7 @@
           <% if (howto.length) { %>
             <ol><% howto.forEach(s => { %><li><%= tr(s) %></li><% }) %></ol>
           <% } else { %>
-            <p class="empty"><%= t('ยังไม่มีคู่มือ — เพิ่มได้ที่คอลัมน์ HowToPlay (1 บรรทัด = 1 ขั้นตอน)') %></p>
+            <p class="empty"><%= t('ยังไม่มีวิธีเล่น') %></p>
           <% } %>
         </details>
 
