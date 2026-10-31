@@ -1,58 +1,62 @@
 <!DOCTYPE html>
-<html lang="th">
+<html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title %> | Bluff Chain บลัฟเชน</title>
+  <title><%= title %> | Bluff Chain<%= lang === 'th' ? ' บลัฟเชน' : '' %></title>
   <link rel="icon" type="image/png" href="/images/brand/favicon.png">
   <link rel="apple-touch-icon" href="/images/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
   <meta name="theme-color" content="#0b0d14">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="<%= typeof asset === 'function' ? asset('/css/style.css') : '/css/style.css' %>">
 </head>
-<body>
+<body class="<%= user && user.role === 'admin' ? 'is-admin' : '' %>">
   <%
     const navLink = (href, label, extra) =>
       `<a href="${href}" class="${currentPath === href ? 'active' : ''}">${label}${extra || ''}</a>`;
-    const queueBadge = '<span id="nav-queue-badge" class="nav-count" style="display:none;" title="จำนวนคิวที่รออยู่">0</span>';
-    const gameBadge = '<span id="nav-game-badge" class="nav-count nav-count-hint" hidden title="โต๊ะของคุณยังไม่ได้เลือกเกม">เลือกเกม</span>';
+    const queueBadge = '<span id="nav-queue-badge" class="nav-count" style="display:none;" title="' + t('จำนวนคิวที่รออยู่') + '">0</span>';
+    const gameBadge = '<span id="nav-game-badge" class="nav-count nav-count-hint" hidden title="' + t('โต๊ะของคุณยังไม่ได้เลือกเกม') + '">' + t('เลือกเกม') + '</span>';
   %>
   <header class="topbar">
-    <a class="brand" href="/" aria-label="Bluff Chain บลัฟเชน หน้าแรก">
+    <a class="brand" href="/" aria-label="<%= t('Bluff Chain บลัฟเชน หน้าแรก') %>">
       <img class="brand-logo" src="/images/brand/icon.png" alt="" width="40" height="40">
-      <span class="brand-words"><span class="brand-text">Bluff Chain</span><small class="brand-sub">บลัฟเชน · บอร์ดเกมคาเฟ่</small></span>
+      <span class="brand-words"><span class="brand-text">Bluff Chain</span><small class="brand-sub"><%= t('บลัฟเชน · บอร์ดเกมคาเฟ่') %></small></span>
     </a>
     <nav>
       <% if (user && user.role === 'admin') { %>
-        <%- navLink('/dashboard', 'สถานะโต๊ะ ', queueBadge) %>
-        <%- navLink('/games', 'บอร์ดเกม') %>
-        <%- navLink('/rentals', 'เช่ากลับบ้าน') %>
-        <%- navLink('/revenue', 'รายได้') %>
-        <%- navLink('/admin/data', '🗂 จัดการข้อมูล') %>
+        <%- navLink('/dashboard', t('สถานะโต๊ะ') + ' ', queueBadge) %>
+        <%- navLink('/games', t('บอร์ดเกม')) %>
+        <%- navLink('/rentals', t('เช่ากลับบ้าน')) %>
+        <%- navLink('/revenue', t('รายได้')) %>
+        <%- navLink('/admin/data', t('🗂 จัดการข้อมูล')) %>
       <% } else if (user) { %>
-        <%- navLink('/booking', 'จองโต๊ะ / เช่าเกม') %>
-        <%- navLink('/games', '🎲 บอร์ดเกม ', gameBadge) %>
-        <%- navLink('/me', 'บัญชีของฉัน') %>
+        <%- navLink('/booking', t('จองโต๊ะ / เช่าเกม')) %>
+        <%- navLink('/games', t('🎲 บอร์ดเกม') + ' ', gameBadge) %>
+        <%- navLink('/me', t('บัญชีของฉัน')) %>
       <% } else { %>
-        <%- navLink('/games', 'บอร์ดเกม') %>
-        <%- navLink('/login', 'เข้าสู่ระบบ') %>
-        <%- navLink('/register', 'สมัครสมาชิก') %>
+        <%- navLink('/games', t('บอร์ดเกม')) %>
+        <%- navLink('/login', t('เข้าสู่ระบบ')) %>
+        <%- navLink('/register', t('สมัครสมาชิก')) %>
       <% } %>
     </nav>
     <div class="topbar-right">
-      <div class="live-indicator" id="live-indicator" title="สถานะการเชื่อมต่อเรียลไทม์">
+      <div class="lang-switch" role="group" aria-label="Language">
+        <a href="/lang/th" class="<%= lang === 'th' ? 'active' : '' %>" hreflang="th" lang="th">TH</a>
+        <a href="/lang/en" class="<%= lang === 'en' ? 'active' : '' %>" hreflang="en" lang="en">EN</a>
+      </div>
+      <div class="live-indicator" id="live-indicator" title="<%= t('สถานะการเชื่อมต่อเรียลไทม์') %>">
         <span class="dot" id="live-dot"></span>
-        <span id="live-text">กำลังเชื่อมต่อ...</span>
+        <span id="live-text"><%= t('กำลังเชื่อมต่อ...') %></span>
       </div>
       <% if (user) { %>
         <div class="user-menu">
-          <span class="user-chip <%= user.role === 'admin' ? 'is-admin' : '' %>" title="<%= user.role === 'admin' ? 'พนักงาน' : 'ลูกค้า' %>">
+          <span class="user-chip <%= user.role === 'admin' ? 'is-admin' : '' %>" title="<%= user.role === 'admin' ? t('พนักงาน') : t('ลูกค้า') %>">
             <%= user.role === 'admin' ? '🛠' : '👤' %> <%= user.name %>
-            <small><%= user.role === 'admin' ? 'พนักงาน' : 'ลูกค้า' %></small>
+            <small><%= user.role === 'admin' ? t('พนักงาน') : t('ลูกค้า') %></small>
           </span>
-          <a href="/account/password" class="user-link">เปลี่ยนรหัสผ่าน</a>
+          <a href="/account/password" class="user-link"><%= t('เปลี่ยนรหัสผ่าน') %></a>
           <form method="post" action="/logout" class="logout-form">
-            <button type="submit" class="btn-logout">ออกจากระบบ</button>
+            <button type="submit" class="btn-logout"><%= t('ออกจากระบบ') %></button>
           </form>
         </div>
       <% } %>
