@@ -1118,3 +1118,318 @@ body.g3d-open { overflow: hidden; }
   .g3d-canvas { min-height: 46vh; }
   .g3d-tools { top: 10px; left: 10px; right: 10px; }
 }
+
+/* =========================================================
+   Design system v2 — โมเดิร์น สะอาด แบบแอปสากล + จัดตัวอักษรไทยให้อ่านง่าย
+   (เลเยอร์สุดท้าย: ทับสไตล์เดิมโดยไม่แตะ markup — ปรับค่าสีที่ :root ที่เดียวได้)
+   ========================================================= */
+:root {
+  --font: "IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Segoe UI", system-ui, sans-serif;
+  --font-head: var(--font);                          /* หัวข้อใช้ฟอนต์เดียวกับเนื้อหา — Kanit เหมาะกับป้ายโฆษณามากกว่า UI */
+  --bg: #0a0b14; --bg-2: #0e1019;
+  --surface: #121420; --surface-2: #181b2a; --surface-3: #20243a;
+  --border: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.16);
+  --text: #eef0f8; --text-2: #b9bfd4; --muted: #8e95ae;
+  --primary: #8b7cff; --primary-2: #6c5bf0; --primary-text: #b8aeff; --primary-soft: rgba(139, 124, 255, 0.14);
+  --radius: 16px; --radius-sm: 11px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.28);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+/* ---------- ตัวอักษร (ไทย) ---------- */
+html { -webkit-text-size-adjust: 100%; }
+body {
+  font-size: 16px; line-height: 1.7;                 /* ภาษาไทยมีสระ/วรรณยุกต์บน-ล่าง ต้องการระยะบรรทัดมากกว่าละติน */
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none; font-kerning: normal; text-rendering: optimizeLegibility;
+  overflow-wrap: break-word;
+  background:
+    radial-gradient(900px 480px at 8% -10%, rgba(124, 108, 248, 0.16), transparent 60%),
+    radial-gradient(800px 460px at 100% -6%, rgba(56, 130, 246, 0.10), transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body:not(:has(.auth-card))::before {                 /* ลดลายเรขาคณิต/แสงลง ให้พื้นหลังเรียบขึ้น */
+  background:
+    radial-gradient(520px 320px at 84% 14%, rgba(76, 201, 255, 0.05), transparent 70%),
+    radial-gradient(560px 340px at 8% 74%, rgba(255, 95, 210, 0.04), transparent 70%);
+}
+h1, h2, h3, h4, .brand, .card-value, .status-title, .me-name, button, .btn-primary, .badge, nav a, label, th {
+  letter-spacing: 0; font-family: var(--font);
+}
+h1 { font-size: clamp(1.55rem, 1.25rem + 0.9vw, 1.95rem); font-weight: 600; line-height: 1.45; margin: 0 0 6px; text-wrap: balance; }
+h1::before, h1::after { display: none; }             /* ไม่ใช้แถบนีออนหน้าหัวข้ออีก */
+h2, h3 { font-weight: 600; line-height: 1.5; text-wrap: balance; }
+.subheading { font-size: 1.12rem; margin: 32px 0 14px; }
+p, li, .hint, .muted { text-wrap: pretty; }
+.hint { color: var(--text-2); font-size: 0.93rem; line-height: 1.7; margin: 0 0 22px; max-width: 78ch; }
+.muted { color: var(--muted); }
+.empty { font-style: normal; color: var(--muted); }
+.brand-text { display: inline-block; padding-block: 0.12em; line-height: 1.35; }   /* กันวรรณยุกต์โดนตัดตอนใช้ gradient text */
+.card-value, td.num, .num, [data-minutes-left], .data-table td { font-variant-numeric: tabular-nums; }
+
+/* ---------- แถบเมนูบน ---------- */
+.topbar { background: rgba(10, 11, 20, 0.82); border-bottom: 1px solid var(--border); box-shadow: none; padding: 12px 28px; }
+.topbar nav { gap: 2px; }
+.topbar nav a { padding: 8px 15px; border-radius: 10px; font-size: 0.95rem; font-weight: 500; color: var(--text-2); border: 1px solid transparent; }
+.topbar nav a:hover { background: rgba(255, 255, 255, 0.06); color: #fff; border-color: transparent; box-shadow: none; }
+.topbar nav a.active { background: var(--primary-soft); color: #fff; border-color: rgba(139, 124, 255, 0.35); box-shadow: none; }
+.brand-logo { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.brand:hover .brand-logo { transform: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3); }
+.live-indicator { background: transparent; border-color: var(--border); color: var(--text-2); font-size: 0.82rem; }
+.lang-switch { background: transparent; border-color: var(--border-strong); }
+.lang-switch a.active { background: var(--primary-2); }
+.user-chip { background: var(--surface-2); border-color: var(--border); }
+.btn-logout { border-color: rgba(255, 107, 129, 0.4); }
+
+/* ---------- เลย์เอาต์ ---------- */
+.container { max-width: 1180px; margin: 36px auto 72px; padding: 0 24px; }
+
+/* ---------- การ์ด/แผง: เรียบ ขอบบาง เงานุ่ม ---------- */
+.booking-card, .queue-group, .admin-panel, .me-profile, .status-card, .borrow-form, .card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm);
+}
+.booking-card { padding: 24px 26px; }
+.summary-cards { gap: 16px; margin-bottom: 22px; }
+.card { padding: 18px 20px; text-align: left; display: flex; flex-direction: column-reverse; gap: 4px; }
+.card::before { height: 2px; opacity: 0.9; box-shadow: none !important; }
+.card-label { color: var(--text-2); font-size: 0.9rem; font-weight: 500; margin: 0; }
+.card-value { font-size: 2rem; font-weight: 600; line-height: 1.25; }
+
+/* ---------- ตาราง ---------- */
+.data-table { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+.data-table th { background: rgba(255, 255, 255, 0.03); color: var(--muted); font-size: 0.82rem; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.data-table td { padding: 13px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 0.94rem; }
+.data-table tbody tr:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* ---------- ปุ่ม ---------- */
+.btn-primary, .btn-primary-sm, .form-row button {
+  background: linear-gradient(180deg, #7d6df5, #6a59ee); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.18) inset, 0 4px 14px rgba(108, 91, 240, 0.28);
+  border-radius: 12px; font-weight: 600;
+}
+.btn-primary { min-height: 44px; padding: 10px 22px; font-size: 0.97rem; }
+.btn-primary-sm { min-height: 36px; padding: 7px 14px; font-size: 0.88rem; }
+.btn-primary:hover, .btn-primary-sm:hover, .form-row button:hover { filter: brightness(1.08); box-shadow: 0 1px 0 rgba(255, 255, 255, 0.2) inset, 0 6px 18px rgba(108, 91, 240, 0.36); transform: translateY(-1px); }
+.btn-secondary { background: var(--surface-2); border-color: var(--border-strong); border-radius: 12px; min-height: 42px; }
+.btn-danger, .btn-checkout { background: linear-gradient(180deg, #f0566e, #e0405a); box-shadow: none; border-radius: 10px; }
+.mode-toggle { background: rgba(255, 255, 255, 0.04); border-color: var(--border); border-radius: 14px; }
+.mode-option { border-radius: 10px; font-weight: 500; }
+.mode-option.is-active { background: var(--primary-2); box-shadow: none; }
+
+/* ---------- ฟอร์ม ---------- */
+.form-row select, .form-row input { min-height: 44px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border-color: var(--border-strong); }
+.form-row label { font-size: 0.9rem; color: var(--text-2); font-weight: 500; }
+input:focus, select:focus, textarea:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(139, 124, 255, 0.22); }
+.field-note { font-size: 0.9rem; }
+.rental-summary { border-radius: 12px; }
+
+/* ---------- ป้าย/ชิป ---------- */
+.badge { padding: 3px 11px; font-size: 0.8rem; font-weight: 500; }
+.chip, .game-chip { border-radius: 999px; }
+
+/* ---------- การ์ดบอร์ดเกม: ขอบสีบางลง เงาไม่ฟุ้ง ---------- */
+.game-grid { gap: 22px; }
+.game-card {
+  border: 1px solid rgba(var(--nc), 0.4); border-radius: 18px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 14px 34px rgba(0, 0, 0, 0.32);
+  background: linear-gradient(180deg, rgba(24, 27, 44, 0.9), rgba(14, 16, 28, 0.94));
+}
+.game-card:hover { transform: translateY(-3px); border-color: rgba(var(--nc), 0.75); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 18px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(var(--nc), 0.25); }
+.game-body { padding: 16px 20px 20px; gap: 11px; }
+.game-title { font-size: 1.22rem; font-weight: 600; line-height: 1.4; text-shadow: none; }
+.game-desc { font-size: 0.92rem; line-height: 1.7; color: var(--text-2); }
+.game-meta { font-size: 0.86rem; }
+.game-meta .badge { box-shadow: none; }
+.game-howto { border-radius: 12px; background: rgba(255, 255, 255, 0.03); border-color: var(--border); box-shadow: none; }
+.game-price strong { text-shadow: none; }
+.game-filter { border-radius: 16px; background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-sm); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.game-filter input[type=search], .game-filter select { min-height: 44px; border-radius: 12px; background-color: rgba(255, 255, 255, 0.04); border-color: var(--border-strong); box-shadow: none; }
+.game-filter input[type=search]:focus, .game-filter select:focus { box-shadow: 0 0 0 3px rgba(139, 124, 255, 0.22); border-color: var(--primary) !important; }
+.btn-3d { min-height: 42px; border-radius: 12px; font-weight: 600; background: var(--primary-soft); border-color: rgba(139, 124, 255, 0.4); }
+.btn-3d:hover { background: var(--primary-2); box-shadow: 0 6px 18px rgba(108, 91, 240, 0.35); }
+.stock-badge.in { box-shadow: none; }
+
+/* ---------- สถานะ / ลูกค้า ---------- */
+.status-card { padding: 16px 20px; border-left-width: 3px; }
+.status-title { font-size: 1.05rem; font-weight: 600; line-height: 1.5; }
+.status-meta { font-size: 0.92rem; line-height: 1.7; }
+.me-profile { padding: 20px 24px; }
+.me-name { font-size: 1.3rem; font-weight: 600; }
+
+/* ---------- แอดมิน ---------- */
+.admin-tabs a { background: transparent; border-color: var(--border); font-weight: 500; }
+.admin-tabs a:hover { border-color: var(--border-strong); background: rgba(255, 255, 255, 0.04); }
+.admin-tabs a.active { background: var(--primary-soft); border-color: rgba(139, 124, 255, 0.45); box-shadow: none; }
+.admin-panel { padding: 20px 22px; }
+.admin-toolbar h2 { font-size: 1.2rem; }
+.admin-dialog { background: var(--surface); border-radius: 20px; }
+.toast { border-radius: 12px; }
+
+/* ---------- หน้า login / สมัคร (กระจกใส) ---------- */
+.auth-form label, .auth-card .hint { font-weight: 500; line-height: 1.7; }
+body:has(.auth-card) .auth-card .btn-primary { background: linear-gradient(180deg, #7d6df5, #5b6cf2); box-shadow: 0 8px 24px rgba(108, 91, 240, 0.35); border-color: rgba(190, 182, 255, 0.4); font-size: 1.05rem; }
+.auth-foot { line-height: 1.7; }
+
+/* ---------- จอเล็ก ---------- */
+@media (max-width: 760px) {
+  body { font-size: 15.5px; }
+  .topbar { padding: 10px 14px; }
+  .container { margin: 22px auto 56px; padding: 0 16px; }
+  .booking-card { padding: 18px 16px; }
+  .card-value { font-size: 1.7rem; }
+  .game-grid { gap: 16px; }
+  .brand-sub { display: none; }                    /* จอมือถือ: ย่อแถบเมนูให้กินที่น้อยลง */
+  .topbar { gap: 8px 12px; }
+  .topbar nav a { padding: 6px 11px; font-size: 0.9rem; }
+  .topbar-right { gap: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+
+/* =========================================================
+   Neon glass layer v3 — กระจกใสขอบนีออน / แท่นเรืองแสง / ปุ่ม CTA เรืองแสง
+   (อิงภาพคอนเซ็ปต์: แยกเป็นหน้า จอง · บอร์ดเกม · บัญชีของฉัน — ตัวอักษรไทยยังใช้ระบบเดียวกับ v2)
+   ========================================================= */
+:root {
+  --neon-blue: 76, 201, 255; --neon-gold: 255, 176, 64; --neon-pink: 255, 95, 210; --neon-purple: 139, 124, 255;
+  --glass: linear-gradient(160deg, rgba(44, 48, 108, 0.36), rgba(14, 16, 38, 0.52));
+}
+
+/* พื้นหลัง: แสงม่วง-น้ำเงิน + กริดจาง ๆ ด้านล่างเหมือนพื้นไซเบอร์ */
+body {
+  background:
+    radial-gradient(900px 520px at 6% -8%, rgba(124, 108, 248, 0.24), transparent 60%),
+    radial-gradient(800px 500px at 100% 0%, rgba(40, 140, 255, 0.16), transparent 62%),
+    radial-gradient(760px 560px at 90% 104%, rgba(226, 64, 200, 0.13), transparent 62%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body:not(:has(.auth-card))::after {
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    linear-gradient(rgba(139, 124, 255, 0.09) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(90deg, rgba(139, 124, 255, 0.09) 1px, transparent 1px) 0 0 / 56px 56px;
+  -webkit-mask-image: linear-gradient(180deg, transparent 38%, rgba(0, 0, 0, 0.85) 100%);
+  mask-image: linear-gradient(180deg, transparent 38%, rgba(0, 0, 0, 0.85) 100%);
+}
+
+/* แถบเมนู: แท็บที่เลือกเป็นแคปซูลม่วง-น้ำเงินเรืองแสง */
+.topbar nav a.active {
+  background: linear-gradient(135deg, #8a5cff 0%, #4a7bff 100%); border-color: transparent;
+  box-shadow: 0 0 20px rgba(120, 100, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.live-indicator .dot.live, .dot.live { background: #3dff9a; box-shadow: 0 0 10px #3dff9a; }
+
+/* ---------- การ์ดกระจกขอบนีออน (ฟอร์มจอง + โปรไฟล์) ---------- */
+.booking-card, .me-profile {
+  position: relative; background: var(--glass); border: none;
+  -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow: 0 0 40px rgba(var(--neon-purple), 0.16), 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+.booking-card { border-radius: 22px; padding: 26px 28px; }
+.me-profile { border-radius: 20px; padding: 22px 26px; }
+.booking-card::before, .me-profile::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.5px; pointer-events: none;
+  background: linear-gradient(135deg, rgba(var(--neon-purple), 0.95), rgba(var(--neon-blue), 0.5) 55%, rgba(var(--neon-pink), 0.55));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+}
+.me-profile::before { background: linear-gradient(135deg, rgba(var(--neon-purple), 0.8), rgba(var(--neon-purple), 0.25)); }
+.me-name { font-size: 1.45rem; }
+
+/* ช่องกรอกแบบกระจก */
+.form-row select, .form-row input, .game-filter input[type=search], .game-filter select {
+  background-color: rgba(8, 10, 28, 0.5); border: 1px solid rgba(110, 150, 255, 0.4);
+}
+.form-row select:focus, .form-row input:focus { box-shadow: 0 0 0 1px rgba(134, 168, 255, 0.8), 0 0 22px rgba(90, 130, 255, 0.4); }
+.mode-toggle { background: rgba(8, 10, 28, 0.45); border-color: rgba(120, 140, 255, 0.28); }
+.mode-option.is-active { background: linear-gradient(135deg, #7a3df0, #4a63ff); box-shadow: 0 0 18px rgba(110, 100, 255, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2); }
+
+/* ข้อความสถานะเขียวนีออน */
+.field-note.ok { color: #4dffb0; text-shadow: 0 0 14px rgba(61, 255, 160, 0.45); font-weight: 500; }
+.field-note.warn { color: #ffd166; }
+
+/* ปุ่มหลัก: เรืองแสง + กระพริบเบา ๆ (ปิดเมื่อผู้ใช้ตั้ง reduced-motion) */
+.btn-primary {
+  background: linear-gradient(90deg, #8a35f0 0%, #5560ff 58%, #2f7bff 100%);
+  border: 1px solid rgba(195, 185, 255, 0.5);
+  box-shadow: 0 0 26px rgba(110, 100, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.btn-primary:hover { box-shadow: 0 0 38px rgba(130, 110, 255, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.26); filter: brightness(1.08); }
+#instore-submit, #rental-submit { width: 100%; min-height: 52px; font-size: 1.08rem; border-radius: 14px; animation: cta-glow 3s ease-in-out infinite; }
+@keyframes cta-glow { 0%, 100% { box-shadow: 0 0 22px rgba(110, 100, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22); } 50% { box-shadow: 0 0 40px rgba(140, 110, 255, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.28); } }
+@media (prefers-reduced-motion: reduce) { #instore-submit, #rental-submit { animation: none; } }
+
+/* ---------- การ์ดบอร์ดเกม: ขอบนีออนฟ้า / ทอง / ชมพู ตามลำดับ + แท่นเรืองแสงสีเดียวกัน ---------- */
+.game-card { --nc: var(--neon-blue); }
+.game-card:nth-child(3n+2) { --nc: var(--neon-gold); }
+.game-card:nth-child(3n) { --nc: var(--neon-pink); }
+.game-card {
+  border: 1.5px solid rgba(var(--nc), 0.7); border-radius: 20px;
+  box-shadow: 0 0 26px rgba(var(--nc), 0.22), 0 16px 38px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+.game-card:hover { border-color: rgba(var(--nc), 1); box-shadow: 0 0 40px rgba(var(--nc), 0.4), 0 20px 44px rgba(0, 0, 0, 0.5); }
+.game-cover .g3d-stage { background: radial-gradient(ellipse at 50% 78%, rgba(var(--nc), 0.28), rgba(9, 11, 19, 0.97) 68%); }
+.btn-3d { border-color: rgba(var(--nc), 0.55); background: rgba(var(--nc), 0.12); }
+.btn-3d:hover { background: rgba(var(--nc), 0.9); color: #0b0d14; box-shadow: 0 0 22px rgba(var(--nc), 0.5); }
+.g3d-hint { background: rgba(8, 10, 28, 0.7); border: 1px solid rgba(var(--nc), 0.5); }
+
+/* ---------- บัญชีของฉัน: หัวข้อมีไอคอนสี ---------- */
+:root {
+  --ic-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+  --ic-package: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z'/%3E%3Cpath d='M12 22V12'/%3E%3Cpath d='m3.3 7 8.7 5 8.7-5'/%3E%3C/svg%3E");
+}
+.sub-ic { display: flex; align-items: center; gap: 10px; }
+.sub-ic::before {
+  content: ""; width: 22px; height: 22px; flex: none; background: currentColor;
+  -webkit-mask: var(--ic) center / contain no-repeat; mask: var(--ic) center / contain no-repeat;
+}
+.sub-now { --ic: var(--ic-alert); } .sub-now::before { color: #ff6b81; filter: drop-shadow(0 0 6px rgba(255, 107, 129, 0.6)); }
+.sub-history { --ic: var(--ic-clock); } .sub-history::before { color: #ffb44a; filter: drop-shadow(0 0 6px rgba(255, 180, 74, 0.55)); }
+.sub-package { --ic: var(--ic-package); } .sub-package::before { color: #c084fc; filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.55)); }
+.status-card { background: var(--glass); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.my-status > p.muted { background: rgba(8, 10, 28, 0.4); border: 1px dashed rgba(120, 140, 255, 0.3); border-radius: 14px; }
+.badge-free { box-shadow: 0 0 12px rgba(61, 220, 151, 0.25); }
+
+/* ---------- ปุ่มอัปโหลดรูปในฟอร์มจัดการข้อมูล ---------- */
+.upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 8px; }
+.btn-upload { min-height: 38px; padding: 6px 14px; font-size: 0.88rem; cursor: pointer; }
+.upload-status { font-size: 0.84rem; }
+.upload-status.ok { color: var(--success); }
+.upload-status.error { color: var(--danger); }
+.upload-preview { width: 54px; height: 68px; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-strong); background: #0b0d14; margin-left: auto; }
+.upload-preview[hidden] { display: none; }
+
+/* ---------- สีรอบกล่องตามสีเด่นของกล่อง (--nc ถูกตั้งจาก games3d.js) ---------- */
+.game-card { transition: transform 0.18s, border-color 0.5s, box-shadow 0.5s; }
+.g3d-panel { border-color: rgba(var(--nc, 139, 92, 246), 0.55); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6), 0 0 60px rgba(var(--nc, 139, 92, 246), 0.18); }
+.g3d-cat { background: rgba(var(--nc, 168, 85, 247), 0.18); border-color: rgba(var(--nc, 168, 85, 247), 0.5); }
+.g3d-cam { border-color: rgba(var(--nc, 139, 92, 246), 0.4); }
+.g3d-cam:hover, .g3d-cam.is-active { background: rgba(var(--nc, 139, 92, 246), 0.24); border-color: rgba(var(--nc, 139, 92, 246), 1); box-shadow: 0 0 16px rgba(var(--nc, 139, 92, 246), 0.5); }
+.g3d-btn-primary { background: linear-gradient(90deg, rgba(var(--nc, 124, 58, 237), 0.95), rgba(var(--nc, 37, 99, 235), 0.6)); color: #0b0d14; box-shadow: 0 6px 20px rgba(var(--nc, 124, 58, 237), 0.3); }
+.g3d-view { background: radial-gradient(ellipse at 50% 85%, rgba(var(--nc, 99, 102, 241), 0.2), #090b12 62%); }
+
+/* ---------- ตัวตัดแต่งรูปกล่อง (box-editor.js) ---------- */
+.box-editor { width: min(980px, calc(100vw - 24px)); }
+.box-editor h2 { margin: 0 0 6px; }
+.be-hint { margin: 0 0 14px; color: var(--text-2); font-size: 0.9rem; line-height: 1.6; }
+.be-body { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 18px; align-items: start; }
+.be-stage { display: flex; justify-content: center; padding: 8px; border-radius: 12px; border: 1px solid var(--border); background: repeating-conic-gradient(#14172a 0% 25%, #101326 0% 50%) 0 0 / 22px 22px; }
+.be-canvas { max-width: 100%; height: auto; touch-action: none; cursor: crosshair; border-radius: 6px; }
+.be-side { display: flex; flex-direction: column; gap: 12px; }
+.be-previews { display: flex; gap: 10px; align-items: flex-end; }
+.be-previews figure { margin: 0; text-align: center; font-size: 0.76rem; color: var(--muted); }
+.be-previews canvas { display: block; max-width: 150px; max-height: 190px; margin: 0 auto 4px; border-radius: 6px; border: 1px solid var(--border-strong); background: #0b0d14; }
+.be-fs[hidden] { display: none; }
+.be-at { display: flex; flex-direction: column; gap: 6px; padding-left: 24px; }
+.be-depth { display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; color: var(--text-2); }
+.be-depth input[type=range] { width: 100%; accent-color: var(--primary); }
+.be-depth-out { color: var(--primary-text); font-weight: 600; }
+@media (max-width: 760px) { .be-body { grid-template-columns: 1fr; } }
+
+/* ---------- หัวข้อหน้า login / สมัคร: ขาวสว่าง อ่านชัดบนรูปพื้นหลัง (ลอยเหนือเงามืดหลังโลโก้) ---------- */
+.container:has(> .auth-card) h1 {
+  position: relative; z-index: 3; text-align: center;
+  font-size: clamp(2rem, 1.5rem + 1.6vw, 2.5rem); font-weight: 700; color: #fff;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.9), 0 0 28px rgba(160, 140, 255, 0.55);
+}

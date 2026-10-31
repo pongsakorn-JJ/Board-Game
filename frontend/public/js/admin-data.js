@@ -207,6 +207,15 @@
                    ${f.suggestions ? `list="${id}-list"` : ''}>`
           + (f.suggestions ? `<datalist id="${id}-list">${f.suggestions.map(s => `<option value="${esc(s)}">`).join('')}</datalist>` : '');
     }
+    if (f.upload) {
+      input += `<div class="upload-row" data-upload-row>
+          <button type="button" class="btn-secondary btn-upload" data-upload="${esc(f.upload)}" data-target="${id}">${T('📤 อัปโหลดรูป')}</button>
+          <button type="button" class="btn-secondary btn-upload" data-edit-box data-target="${id}">${T('✂️ ตัดแต่งรูปกล่อง')}</button>
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden data-file-input>
+          <span class="upload-status muted" data-upload-status></span>
+          <img class="upload-preview" data-upload-preview alt="" ${v ? '' : 'hidden'} src="${esc(v)}">
+        </div>`;
+    }
     const wide = f.type === 'textarea' ? ' wide' : '';
     return `<label class="admin-field${wide}" data-field="${esc(f.name)}">
       <span class="label-text">${esc(f.label)}${req}</span>
@@ -235,10 +244,119 @@
     if (input) input.focus();
   }
 
+  /* ---- อัปโหลดรูป (เช่น รูปหน้ากล่องเกม): ส่งไฟล์ดิบให้เซิร์ฟเวอร์ แล้วเติม URL ที่ได้ลงช่อง ---- */
+  const MAX_UPLOAD = 5 * 1024 * 1024;
+  $('edit-fields').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-upload]');
+    if (btn) { e.preventDefault(); btn.closest('[data-upload-row]').querySelector('[data-file-input]').click(); return; }
+    const eb = e.target.closest('[data-edit-box]');
+    if (eb) {
+      e.preventDefault();
+      const target = $(eb.dataset.target), row = eb.closest('[data-upload-row]'), status = row.querySelector('[data-upload-status]');
+      if (!target.value.startsWith('/')) { status.className = 'upload-status error'; status.textContent = T('ต้องเป็นรูปที่เก็บในเว็บนี้ (อัปโหลดหรือวาง URL ก่อน)'); return; }
+      openBoxEditor(target.value, target, row);
+    }
+  });
+
+  /* ---- ตัวตัดแต่งรูปกล่อง (box-editor.js): ดัดมุมรูปถ่ายเป็นหน้ากล่อง/ด้านข้าง แล้วอัปโหลดผลลัพธ์ ---- */
+  async function postImage(blob, query) {
+    const resp = await fetch('/api/admin/upload/game-image' + (query || ''), { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob });
+    return resp.json().catch(() => ({ ok: false, message: T('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ ({status})', { status: resp.status }) }));
+  }
+  function openBoxEditor(src, target, row, onSkip) {
+    const status = row.querySelector('[data-upload-status]');
+    const setStatus = (cls, text) => { status.className = 'upload-status ' + cls; status.textContent = text; };
+    if (!window.BoxEditor) { if (onSkip) onSkip(); return; }
+    BoxEditor.open({
+      src,
+      onSkip: () => { if (onSkip) onSkip(); },
+      onError: (msg) => { setStatus('error', msg); if (onSkip) onSkip(); },
+      onDone: async (res) => {
+        setStatus('muted', T('กำลังอัปโหลด...'));
+        try {
+          const front = await postImage(res.front);
+          if (!front.ok) return setStatus('error', front.message);
+          if (res.side) {
+            const side = await postImage(res.side, '?sideOf=' + encodeURIComponent(front.url) + '&at=' + res.sideAt);
+            if (!side.ok) return setStatus('error', side.message);
+          }
+          target.value = front.url;
+          const prev = row.querySelector('[data-upload-preview]'); prev.src = front.url; prev.hidden = false;
+          setStatus('ok', T('บันทึกรูปกล่องแล้ว'));
+        } catch (err) { setStatus('error', T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้')); }
+      }
+    });
+  }
+  $('edit-fields').addEventListener('input', (e) => {                    // พิมพ์/วาง URL เอง → อัปเดตรูปตัวอย่าง
+    const label = e.target.closest('.admin-field');
+    const prev = label && label.querySelector('[data-upload-preview]');
+    if (prev && e.target.type === 'text') { prev.src = e.target.value; prev.hidden = !e.target.value; }
+  });
+  // URL รูปจากเว็บอื่น → ให้เซิร์ฟเวอร์ดึงมาเก็บในเว็บเรา (ไม่งั้นโมเดล 3D โหลดรูปข้ามเว็บไม่ได้) แล้วแทนที่ URL ในช่อง
+  async function importExternalImage(input, row) {
+    const status = row && row.querySelector('[data-upload-status]');
+    const setStatus = (cls, text) => { if (status) { status.className = 'upload-status ' + cls; status.textContent = text; } };
+    setStatus('muted', T('กำลังดึงรูปจาก URL...'));
+    try {
+      const resp = await fetch('/api/admin/upload/game-image-url', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url: input.value.trim() }) });
+      const res = await resp.json().catch(() => ({ ok: false, message: T('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ ({status})', { status: resp.status }) }));
+      if (res.ok) {
+        input.value = res.url;
+        const prev = row && row.querySelector('[data-upload-preview]'); if (prev) { prev.src = res.url; prev.hidden = false; }
+        setStatus('ok', res.message);
+        openBoxEditor(res.url, input, row);
+        return true;
+      }
+      setStatus('error', res.message + ' — ' + T('ลองกดอัปโหลดรูปแทน'));
+    } catch (err) { setStatus('error', T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้')); }
+    return false;
+  }
+  const isExternalUrl = (v) => /^https?:\/\//i.test(String(v || '').trim());
+  $('edit-fields').addEventListener('change', (e) => {                  // วาง URL เสร็จ (ออกจากช่อง) → ดึงรูปทันที
+    const label = e.target.closest('.admin-field');
+    const row = label && label.querySelector('[data-upload-row]');
+    if (row && e.target.type === 'text' && isExternalUrl(e.target.value)) importExternalImage(e.target, row);
+  });
+
+  $('edit-fields').addEventListener('change', async (e) => {
+    const fileInput = e.target.closest('[data-file-input]');
+    if (!fileInput || !fileInput.files.length) return;
+    const file = fileInput.files[0];
+    const row = fileInput.closest('[data-upload-row]');
+    const status = row.querySelector('[data-upload-status]');
+    const btn = row.querySelector('[data-upload]');
+    const target = $(btn.dataset.target);
+    fileInput.value = '';
+    if (file.size > MAX_UPLOAD) { status.className = 'upload-status error'; status.textContent = T('รูปใหญ่เกินไป (ไม่เกิน 5 MB)'); return; }
+    if (window.BoxEditor && btn.dataset.upload === 'game-image') {
+      openBoxEditor(URL.createObjectURL(file), target, row, () => uploadRaw(file, row, btn, target, status));
+      return;
+    }
+    uploadRaw(file, row, btn, target, status);
+  });
+
+  async function uploadRaw(file, row, btn, target, status) {
+    btn.disabled = true; status.className = 'upload-status muted'; status.textContent = T('กำลังอัปโหลด...');
+    try {
+      const resp = await fetch('/api/admin/upload/' + btn.dataset.upload, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+      const res = await resp.json().catch(() => ({ ok: false, message: T('เซิร์ฟเวอร์ตอบกลับผิดรูปแบบ ({status})', { status: resp.status }) }));
+      if (res.ok) {
+        target.value = res.url;
+        const prev = row.querySelector('[data-upload-preview]'); prev.src = res.url; prev.hidden = false;
+        status.className = 'upload-status ok'; status.textContent = res.message;
+      } else { status.className = 'upload-status error'; status.textContent = res.message; }
+    } catch (err) { status.className = 'upload-status error'; status.textContent = T('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้'); }
+    finally { btn.disabled = false; }
+  }
+
   $('edit-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const m = META[current];
     const body = {};
+    for (const f of m.fields) {                                          // ยังเป็น URL ภายนอกอยู่ → ดึงมาเก็บก่อนบันทึก
+      const el = $('f-' + f.name);
+      if (f.upload && el && isExternalUrl(el.value)) await importExternalImage(el, el.closest('.admin-field').querySelector('[data-upload-row]'));
+    }
     m.fields.forEach(f => { const el = $('f-' + f.name); if (el) body[f.name] = el.value; });
 
     // เช็คช่องบังคับก่อนส่ง (เซิร์ฟเวอร์ตรวจซ้ำอีกรอบ)

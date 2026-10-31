@@ -61,10 +61,28 @@
     uno: { aspect: 0.804, depth: 0.16, color: 0xd3201f, h: 2.15, hanger: 0.96 }
   };
   const texCache = {};
-  function loadTexture(file, apply) {
-    const url = TEX_DIR + file;
+  function loadTextureUrl(url, apply) {
     if (texCache[url]) { apply(texCache[url]); return; }
     new THREE.TextureLoader().load(url, (tex) => { tex.anisotropy = 8; texCache[url] = tex; apply(tex); }, undefined, () => { /* ไม่มีไฟล์: ใช้ปก canvas ต่อไป */ });
+  }
+  function loadTexture(file, apply) { loadTextureUrl(TEX_DIR + file, apply); }
+
+  // รูปปกที่พนักงานอัปโหลด/ใส่ URL ไว้ที่เกม (ไม่ใช่รูปตัวอย่าง default.svg) — ใช้เป็นหน้ากล่อง 3D
+  function imageOf(card) {
+    const img = card.querySelector('.game-cover img');
+    const src = img && img.getAttribute('src');
+    return src && !/default\.svg$/.test(src) ? src : null;
+  }
+  // สีเฉลี่ยของรูป ใช้ทาด้านข้างกล่อง (รูปจากโดเมนอื่นอ่านพิกเซลไม่ได้ → คืน null)
+  function averageColor(image) {
+    try {
+      const c = document.createElement('canvas'); c.width = c.height = 8;
+      const x = c.getContext('2d'); x.drawImage(image, 0, 0, 8, 8);
+      const d = x.getImageData(0, 0, 8, 8).data; let r = 0, g = 0, b = 0;
+      for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+      const n = d.length / 4;
+      return new THREE.Color(r / n / 255, g / n / 255, b / n / 255);
+    } catch (e) { return null; }
   }
 
   /* ---------------------------------------------------------
@@ -156,15 +174,142 @@
   /* ---------------------------------------------------------
      โมเดล 3D ของเกม (กล่อง + อุปกรณ์บนโต๊ะ) — ชิ้นส่วนที่ registerPart ไว้จะแยกออกได้ใน Explode View
      --------------------------------------------------------- */
-  function buildModel(slug, name) {
+  /* ---------------------------------------------------------
+     มาตรฐานเดียวกันทุกเกม: หาสีเด่นจากภาพกล่อง → ใช้เป็นสีขอบการ์ด / แสงรอบ ๆ / วงแหวนและแสงบนฐาน
+     --------------------------------------------------------- */
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    let h = 0, sat = 0;
+    if (max !== min) {
+      const d = max - min;
+      sat = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h /= 6;
+    }
+    return [h, sat, l];
+  }
+  function hslToRgb(h, sat, l) {
+    const c = new THREE.Color().setHSL(h, sat, l);
+    return { r: Math.round(c.r * 255), g: Math.round(c.g * 255), b: Math.round(c.b * 255) };
+  }
+  // สีที่ "โดดเด่น" ที่สุดของภาพ (ถ่วงด้วยความสด; ข้ามสีขาว/ดำ/เทา) แล้วปรับให้สดแบบนีออน
+  function dominantColor(image) {
+    try {
+      const N = 48, c = document.createElement('canvas'); c.width = c.height = N;
+      const x = c.getContext('2d'); x.drawImage(image, 0, 0, N, N);
+      const d = x.getImageData(0, 0, N, N).data;
+      const B = 24, buckets = []; for (let i = 0; i < B; i++) buckets.push({ w: 0, r: 0, g: 0, b: 0 });
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 128) continue;
+        const [h, sat, l] = rgbToHsl(d[i], d[i + 1], d[i + 2]);
+        if (l < 0.12 || l > 0.92 || sat < 0.28) continue;
+        const w = sat * (1 - Math.abs(l - 0.5) * 1.2), k = Math.floor(h * B) % B;
+        buckets[k].w += w; buckets[k].r += d[i] * w; buckets[k].g += d[i + 1] * w; buckets[k].b += d[i + 2] * w;
+      }
+      const best = buckets.reduce((a, b) => (b.w > a.w ? b : a), buckets[0]);
+      if (best.w < 1) return null;
+      const [h] = rgbToHsl(best.r / best.w, best.g / best.w, best.b / best.w);
+      return hslToRgb(h, 0.82, 0.58);
+    } catch (e) { return null; }                               // รูปจากโดเมนอื่นอ่านพิกเซลไม่ได้
+  }
+  function hueColor(seed) { return hslToRgb(hueOf(seed) / 360, 0.78, 0.58); }
+  function setCardAccent(card, c) { card.style.setProperty('--nc', c.r + ', ' + c.g + ', ' + c.b); }
+  const toThree = (c) => new THREE.Color(c.r / 255, c.g / 255, c.b / 255);
+
+  // ผูกสีของโมเดลกับสีเด่นของภาพกล่อง (ภาพโหลดเสร็จเมื่อไรก็อัปเดตการ์ด+ฐานตามทันที)
+  function wireAccent(card, model, onChange) {
+    const apply = (img) => {
+      const c = dominantColor(img); if (!c) return;
+      setCardAccent(card, c);
+      model.userData.setAccent(toThree(c));
+      if (onChange) onChange(c);
+    };
+    model.userData.onFront = apply;
+    if (model.userData.frontImage) apply(model.userData.frontImage);
+  }
+  const hasArt = (card, slug) => !!REAL[slug] || !!imageOf(card);
+
+  /* ฐานมาตรฐาน: แท่น 3 ชั้นสีเข้มเงา + ลายวงกลมเทคโนบนหน้าแท่น + วงแหวนนีออน 2 ชั้น + แสงใต้แท่น + อนุภาคลอยขึ้น */
+  function padTexture() {
+    const c = document.createElement('canvas'); c.width = c.height = 512;
+    const x = c.getContext('2d'), m = 256;
+    const g = x.createRadialGradient(m, m, 10, m, m, m); g.addColorStop(0, '#1b1d3a'); g.addColorStop(1, '#090a16');
+    x.fillStyle = g; x.fillRect(0, 0, 512, 512);
+    x.strokeStyle = 'rgba(255,255,255,0.7)';
+    [[70, 1.5], [118, 1.5], [170, 2], [226, 4]].forEach(([r, w]) => { x.lineWidth = w; x.beginPath(); x.arc(m, m, r, 0, Math.PI * 2); x.stroke(); });
+    x.lineWidth = 2;
+    for (let i = 0; i < 72; i++) {
+      const a = (i / 72) * Math.PI * 2, r0 = i % 6 === 0 ? 182 : 200, r1 = 216;
+      x.beginPath(); x.moveTo(m + Math.cos(a) * r0, m + Math.sin(a) * r0); x.lineTo(m + Math.cos(a) * r1, m + Math.sin(a) * r1); x.stroke();
+    }
+    const t = new THREE.CanvasTexture(c); t.anisotropy = 4; return t;
+  }
+  function glowTexture() {
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 0, 128, 128, 128);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.5, 'rgba(255,255,255,0.28)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+    return new THREE.CanvasTexture(c);
+  }
+  function buildPedestal(accent) {
+    const g = new THREE.Group();
+    const body = new THREE.MeshStandardMaterial({ color: 0x15162b, roughness: 0.32, metalness: 0.65 });
+    const trim = new THREE.MeshStandardMaterial({ color: 0x1d1f3d, roughness: 0.28, metalness: 0.7, emissive: accent.clone(), emissiveIntensity: 0.1 });
+    const padTex = padTexture();
+    const pad = new THREE.MeshStandardMaterial({ map: padTex, color: 0x30334f, roughness: 0.3, metalness: 0.5, emissive: accent.clone(), emissiveMap: padTex, emissiveIntensity: 0.9 });
+    const bottom = new THREE.Mesh(new THREE.CylinderGeometry(3.75, 3.92, 0.18, 72), body); bottom.position.y = -0.27;
+    const mid = new THREE.Mesh(new THREE.CylinderGeometry(3.45, 3.62, 0.14, 72), trim); mid.position.y = -0.13;
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.3, 0.05, 72), [trim, pad, trim]); top.position.y = -0.03;
+    const ringMat = new THREE.MeshBasicMaterial({ color: accent.clone() });
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.47, 0.05, 12, 96), ringMat); ring.rotation.x = Math.PI / 2; ring.position.y = -0.06;
+    const ring2Mat = new THREE.MeshBasicMaterial({ color: accent.clone(), transparent: true, opacity: 0.55 });
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(3.84, 0.028, 10, 96), ring2Mat); ring2.rotation.x = Math.PI / 2; ring2.position.y = -0.2;
+    const glowMat = new THREE.MeshBasicMaterial({ map: glowTexture(), color: accent.clone(), transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false });
+    const glow = new THREE.Mesh(new THREE.PlaneGeometry(11, 11), glowMat); glow.rotation.x = -Math.PI / 2; glow.position.y = -0.42;
+    // อนุภาคแสงลอยขึ้นรอบแท่น
+    const N = 38, pos = new Float32Array(N * 3), speed = [];
+    for (let i = 0; i < N; i++) {
+      const a = Math.random() * Math.PI * 2, r = 3.0 + Math.random() * 0.9;
+      pos[i * 3] = Math.cos(a) * r; pos[i * 3 + 1] = Math.random() * 2.4; pos[i * 3 + 2] = Math.sin(a) * r; speed.push(0.004 + Math.random() * 0.008);
+    }
+    const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pMat = new THREE.PointsMaterial({ color: accent.clone(), size: 0.07, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending });
+    const points = new THREE.Points(pg, pMat);
+    const light = new THREE.PointLight(accent.clone(), 0.9, 9); light.position.set(0, 0.7, 0);
+    g.add(bottom, mid, top, ring, ring2, glow, points, light);
+    return {
+      group: g,
+      setAccent(c) {
+        ringMat.color.copy(c); ring2Mat.color.copy(c); glowMat.color.copy(c); pMat.color.copy(c); light.color.copy(c);
+        pad.emissive.copy(c); trim.emissive.copy(c);
+      },
+      tick() {
+        if (REDUCE_MOTION) return;
+        for (let i = 0; i < N; i++) { pos[i * 3 + 1] += speed[i]; if (pos[i * 3 + 1] > 2.6) pos[i * 3 + 1] = 0; }
+        pg.attributes.position.needsUpdate = true;
+      }
+    };
+  }
+
+  // สีนีออนของการ์ด (--nc: "r,g,b" ใน CSS) ใช้เป็นสีวงแหวนเรืองแสงรอบแท่นของโมเดล
+  function accentOf(card) {
+    const v = getComputedStyle(card).getPropertyValue('--nc').trim().split(',').map(Number);
+    return v.length === 3 && v.every((n) => !isNaN(n)) ? new THREE.Color(v[0] / 255, v[1] / 255, v[2] / 255) : new THREE.Color(0x8b5cf6);
+  }
+
+  function buildModel(slug, name, accent, imageUrl) {
+    accent = accent || new THREE.Color(0x8b5cf6);
     const group = new THREE.Group();
     const parts = [];
     const known = KNOWN.indexOf(slug) >= 0;
 
-    const base = new THREE.Mesh(new THREE.CylinderGeometry(3.3, 3.5, 0.22, 48), new THREE.MeshStandardMaterial({ color: 0x1e1b2e, roughness: 0.5, metalness: 0.2 }));
-    base.position.y = -0.12; group.add(base);
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(3.38, 0.035, 16, 64), new THREE.MeshBasicMaterial({ color: 0x8b5cf6 }));
-    ring.rotation.x = Math.PI / 2; ring.position.y = -0.02; group.add(ring);
+    const pedestal = buildPedestal(accent);
+    group.add(pedestal.group);
+    group.userData.setAccent = pedestal.setAccent;
+    group.userData.tick = pedestal.tick;
+    group.userData.frontImage = null; group.userData.onFront = null;
+    function frontApplied(image) { group.userData.frontImage = image; if (group.userData.onFront) group.userData.onFront(image); }
 
     function registerPart(mesh, explodeVec) {
       mesh.userData.origPos = mesh.position.clone();
@@ -181,9 +326,10 @@
     const frontMat = photoMat(createCoverTexture(slug, name));
     const spineMat = real && real.side ? photoMat(null) : sideMat;
     if (real) {
-      loadTexture(slug + '-front.jpg', (tex) => { frontMat.map = tex; frontMat.needsUpdate = true; });
+      loadTexture(slug + '-front.jpg', (tex) => { frontMat.map = tex; frontMat.needsUpdate = true; frontApplied(tex.image); });
       if (real.side) loadTexture(slug + '-side.jpg', (tex) => { spineMat.map = tex; spineMat.color.set(0xe2e2e2); spineMat.needsUpdate = true; });
     }
+    const customUrl = imageUrl && (!real || /\/uploads\//.test(imageUrl)) ? imageUrl : null;
     // BoxGeometry: [+x, -x, +y, -y, +z(หน้ากล่อง), -z]
     const boxMats = [sideMat, spineMat, sideMat, sideMat, frontMat, sideMat];
 
@@ -199,6 +345,41 @@
     registerPart(box, new THREE.Vector3(known ? -0.7 : 0, known ? 0.9 : 0.4, known ? -0.6 : 0));
     group.userData.boxCenter = box.position.clone();
     group.userData.boxHeight = boxH;
+
+    // ขนาดกล่อง (กว้าง/หนา) ปรับได้ภายหลังเมื่อรูปหน้ากล่อง/ด้านข้างโหลดเสร็จ
+    const dim = { w: boxW, d: boxD };
+    function rebuildBox() {
+      box.geometry.dispose(); box.geometry = new THREE.BoxGeometry(dim.w, boxH, dim.d);
+      if (known) box.position.x = -0.95 - Math.max(0, (dim.w - 2.1) / 2);
+      group.userData.boxCenter = box.position.clone();
+      box.userData.origPos = box.position.clone();
+    }
+    // รูปจากตัวตัดแต่ง (/uploads/<hex>.jpg) อาจมีไฟล์ด้านข้างคู่กัน <hex>-sideL.jpg / -sideR.jpg → ใช้เป็นสันกล่อง และความหนาตามสัดส่วนรูป
+    const up = customUrl && /^\/images\/games\/uploads\/([0-9a-f]{16})\.\w+$/.exec(customUrl);
+    if (up) {
+      [['L', 1], ['R', 0]].forEach(([at, faceIdx]) => {
+        loadTextureUrl('/images/games/uploads/' + up[1] + '-side' + at + '.jpg', (stex) => {
+          const m = photoMat(null); m.map = stex; m.color.set(0xe2e2e2); m.needsUpdate = true;
+          box.material[faceIdx] = m;
+          const sim = stex.image;
+          if (sim && sim.width && sim.height) { dim.d = boxH * Math.min(0.6, Math.max(0.08, sim.width / sim.height)); rebuildBox(); }
+        });
+      });
+    }
+
+    if (customUrl) {
+      loadTextureUrl(customUrl, (tex) => {
+        frontMat.map = tex; frontMat.color.set(0xe2e2e2); frontMat.needsUpdate = true;
+        frontApplied(tex.image);
+        const im = tex.image;
+        if (im && im.width && im.height) {                       // ปรับความกว้างกล่องตามสัดส่วนรูปจริง ไม่ให้ภาพยืด
+          dim.w = boxH * Math.min(1.3, Math.max(0.45, im.width / im.height));
+          rebuildBox();
+        }
+        const avg = im && averageColor(im);
+        if (avg) sideMat.color.copy(avg).multiplyScalar(0.7);
+      });
+    }
 
     if (isUno) {
       // ฝาติ่งแขวนเจาะรูด้านบน (ใช้รูปส่วนบนของกล่องจริง)
@@ -328,12 +509,14 @@
     const w = stage.clientWidth || 300, h = stage.clientHeight || 190;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, w / h, 0.1, 50);
-    camera.position.set(0, 2.9, 6.5);
+    camera.position.set(0, 3.0, 6.9);
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     stage.appendChild(renderer.domElement);
     addLights(scene, false);
-    const model = buildModel(slug, name);
+    if (!hasArt(card, slug)) setCardAccent(card, hueColor(slug || name));      // เกมที่ยังไม่มีรูปกล่อง: สีตามชื่อเกม
+    const model = buildModel(slug, name, accentOf(card), imageOf(card));
+    wireAccent(card, model);
     scene.add(model);
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enableZoom = false; controls.enablePan = false;
@@ -360,6 +543,7 @@
       const p = previews[i];
       if (!p.visible) continue;
       if (!REDUCE_MOTION) p.model.rotation.y += 0.0035;
+      if (p.model.userData.tick) p.model.userData.tick();
       p.controls.update();
       p.renderer.render(p.scene, p.camera);
     }
@@ -481,10 +665,12 @@
     modal.hidden = false;
     document.body.classList.add('g3d-open');
     q('.g3d-close').focus();
-    initInspector3D(slug, name, known);
+    if (!hasArt(card, slug)) setCardAccent(card, hueColor(slug || name));
+    modal.style.setProperty('--nc', getComputedStyle(card).getPropertyValue('--nc').trim());
+    initInspector3D(slug, name, known, accentOf(card), imageOf(card), card);
   }
 
-  function initInspector3D(slug, name, known) {
+  function initInspector3D(slug, name, known, accent, imageUrl, card) {
     const container = modal.querySelector('.g3d-canvas');
     container.innerHTML = '';
     const w = container.clientWidth || 600, h = container.clientHeight || 420;
@@ -495,7 +681,8 @@
     renderer.setSize(w, h); renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     container.appendChild(renderer.domElement);
     addLights(scene, true);
-    const model = buildModel(slug, name);
+    const model = buildModel(slug, name, accent, imageUrl);
+    wireAccent(card, model, (c) => modal.style.setProperty('--nc', c.r + ', ' + c.g + ', ' + c.b));
     scene.add(model);
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.dampingFactor = 0.06; controls.minDistance = 1.6; controls.maxDistance = 11;
@@ -540,6 +727,7 @@
   function renderInspector() {
     if (!insp) return;
     insp.current += (insp.target - insp.current) * 0.08;
+    if (insp.model.userData.tick) insp.model.userData.tick();
     insp.model.userData.parts.forEach((part) => {
       part.position.lerpVectors(part.userData.origPos, part.userData.origPos.clone().add(part.userData.explodeVec), insp.current);
     });

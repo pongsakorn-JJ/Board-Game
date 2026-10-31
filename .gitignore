@@ -1,3 +1,5 @@
 node_modules/
 .env
 _to_delete/
+
+frontend/public/images/games/uploads/

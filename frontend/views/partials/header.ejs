@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" href="/images/brand/apple-touch-icon.png">
   <link rel="stylesheet" href="/fonts/fonts.css">
   <meta name="theme-color" content="#0b0d14">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="<%= typeof asset === 'function' ? asset('/css/style.css') : '/css/style.css' %>">
 </head>
 <body class="<%= user && user.role === 'admin' ? 'is-admin' : '' %>">
   <%

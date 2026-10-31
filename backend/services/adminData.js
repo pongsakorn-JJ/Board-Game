@@ -159,7 +159,8 @@ const ENTITIES = {
       { name: 'PlayTime', label: 'เวลาเล่นโดยประมาณ', type: 'text', maxLength: 30, placeholder: 'เช่น 30-60 นาที' },
       { name: 'ImageUrl', label: 'รูปเกม (URL)', type: 'text', maxLength: 255, placeholder: '/images/games/default.svg',
         pattern: /^(\/|https?:\/\/)\S+$/, patternMsg: 'รูปต้องขึ้นต้นด้วย / หรือ http(s)://',
-        help: 'วางไฟล์ไว้ใน public/images/games/ แล้วใส่ /images/games/ชื่อไฟล์' },
+        upload: 'game-image',
+        help: 'วาง URL ของรูป (ระบบดึงมาเก็บในเว็บให้ตอนบันทึก) หรือกด "อัปโหลดรูป" — ถ้าเป็นภาพหน้ากล่องตรงๆ (JPG/PNG/WEBP ไม่เกิน 5 MB) จะขึ้นเป็นกล่อง 3D ในหน้าบอร์ดเกม' },
       { name: 'ShortDescription', label: 'รายละเอียดย่อ', type: 'textarea', maxLength: 400, rows: 3, nvarchar: true },
       { name: 'HowToPlay', label: 'วิธีเล่นแบบย่อ (1 บรรทัด = 1 ขั้นตอน)', type: 'textarea', maxLength: 2000, rows: 5, nvarchar: true }
     ],
@@ -345,7 +346,7 @@ function publicMeta() {
       fields: e.fields.map(f => ({
         name: f.name, label: f.label, type: f.type, required: !!f.required, maxLength: f.maxLength,
         minLength: f.minLength, min: f.min, max: f.max, options: f.options, lookup: f.lookup,
-        placeholder: f.placeholder, help: f.help, default: f.default, rows: f.rows,
+        placeholder: f.placeholder, help: f.help, default: f.default, rows: f.rows, upload: f.upload,
         suggestions: f.suggestions, inputmode: f.inputmode,
         pattern: f.pattern ? f.pattern.source : undefined, patternMsg: f.patternMsg
       }))

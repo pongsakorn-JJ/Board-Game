@@ -21,6 +21,11 @@ app.set('view engine', 'ejs');
 const FRONTEND = path.join(__dirname, '..', 'frontend');
 app.set('views', path.join(FRONTEND, 'views'));
 app.use(express.static(path.join(FRONTEND, 'public')));
+// เติม ?v=<เวลาแก้ไฟล์> ท้าย css/js ของเว็บ เบราว์เซอร์จะโหลดไฟล์ใหม่ทุกครั้งที่แก้ (ไม่ต้องกด Ctrl+F5)
+app.locals.asset = (p) => {
+  if (/^https?:/.test(p)) return p;
+  try { return p + '?v=' + Math.floor(require('fs').statSync(path.join(FRONTEND, 'public', p)).mtimeMs); } catch (_) { return p; }
+};
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));   // ฟอร์ม login / สมัครสมาชิก
 
