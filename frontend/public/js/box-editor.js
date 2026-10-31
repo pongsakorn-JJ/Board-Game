@@ -78,6 +78,13 @@
     const back = (p) => [p[0] / sc, p[1] / sc];
     const flat = () => ({ front: [[bx0, by0], [bx1, by0], [bx1, by1], [bx0, by1]].map(back), side: null, sideAt: null });
 
+    // ภาพเต็มกรอบ (ปกหนังสือ/หน้ากล่องที่ครอปมาแล้ว): ขอบรูปทั้ง 4 ด้านเป็นเนื้อภาพ ไม่มีพื้นหลังเหลือ → ไม่มีด้านข้างให้แยก
+    const edgeFg = (pts) => pts.reduce((s, [px, py]) => s + fg[py * w + px], 0) / pts.length;
+    const top = [], bot = [], lef = [], rig = [];
+    for (let xx = 0; xx < w; xx++) { top.push([xx, 1]); bot.push([xx, h - 2]); }
+    for (let yy = 0; yy < h; yy++) { lef.push([1, yy]); rig.push([w - 2, yy]); }
+    if ([top, bot, lef, rig].every((e) => edgeFg(e) > 0.85)) return flat();
+
     // เส้นรอยต่อ "หน้ากล่อง | ด้านข้าง" = ขอบแนวตั้งที่ต่อเนื่องเกือบเต็มความสูงกล่อง (ลายบนปกมีขอบเป็นช่วง ๆ ไม่ต่อเนื่อง)
     // → นับสัดส่วนแถวที่มีขอบชัดในแต่ละคอลัมน์ และค้นหาเฉพาะแถบใกล้ขอบกล่อง (ด้านข้างกว้างไม่เกิน ~30% ของความกว้างรวม)
     const y0 = Math.round(by0 + bh * 0.12), y1 = Math.round(by1 - bh * 0.12), rows = Math.max(1, y1 - y0 + 1), C = new Float32Array(w);
