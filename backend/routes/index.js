@@ -106,10 +106,21 @@ router.get('/', (req, res) => {
 router.get('/booking', (req, res, next) => (isAdmin(req) ? res.redirect('/dashboard') : next()), requireCustomer, async (req, res) => {
   try {
     const state = await realtime.buildState();
-    const me = await getMeData(await getPool(), req.session.user.id);
+    const pool = await getPool();
+    const me = await getMeData(pool, req.session.user.id);
+    // รายละเอียดเกม (รูปปก / วิธีเล่น / จำนวนผู้เล่น) สำหรับกล่องบอร์ดเกม 3D ด้านขวา — จำนวนคงเหลืออัปเดตจาก state เรียลไทม์
+    const games = (await pool.request().query(`
+      SELECT g.GameID, g.Name, c.CategoryName, g.MinPlayer, g.MaxPlayer, g.Difficulty,
+             g.TotalQty, g.AvailableQty, g.OffsiteRentalRate, g.DepositAmount,
+             g.ImageUrl, g.PlayTime, g.ShortDescription, g.HowToPlay
+      FROM tbl_boardgame g
+      LEFT JOIN tbl_gamecategory c ON g.CategoryID = c.CategoryID
+      ORDER BY g.Name
+    `)).recordset;
     res.render('booking', {
       title: 'จองโต๊ะ / เช่ากลับบ้าน',
       packages: state.packages,
+      games,
       today: todayLocal(),
       hasNationalId: !!(me.profile && me.profile.HasNationalID),
       initialStateJson: toScriptJson(realtime.publicState(state)),

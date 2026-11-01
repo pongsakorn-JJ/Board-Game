@@ -756,4 +756,14 @@
   }
 
   initPreviews();
+
+  // เปิดหน้าต่างส่อง 3D ของเกมทันทีเมื่อมาจากลิงก์ /games?view=<GameID> (เช่น ปุ่ม "ส่อง 3D" ในหน้าจองโต๊ะ)
+  (function openFromQuery() {
+    const id = new URLSearchParams(location.search).get('view');
+    const card = id && document.querySelector('.game-card[data-game-id="' + CSS.escape(id) + '"]');
+    if (card) { card.scrollIntoView({ block: 'center' }); openByCard(card); }
+  })();
+
+  // ให้หน้าอื่น (หน้าจองโต๊ะ) ใช้โมเดลกล่องเกม + แท่นเรืองแสงชุดเดียวกันได้
+  window.BGC3D = { buildModel, disposeObject, addLights, slugOf, hueColor, toThree, REDUCE_MOTION };
 })();
