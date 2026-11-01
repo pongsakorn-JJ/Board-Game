@@ -1,78 +1,171 @@
 <%- include('partials/header') %>
 
+<%
+  const steps = (text) => String(text || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  const difficultyTh = { Easy: t('ง่าย'), Medium: t('ปานกลาง'), Hard: t('ยาก') };
+  const bookGames = games.map(g => ({
+    id: g.GameID, name: g.Name, cat: g.CategoryName ? tr(g.CategoryName) : '',
+    min: g.MinPlayer, max: g.MaxPlayer, level: difficultyTh[g.Difficulty] || g.Difficulty || '',
+    time: g.PlayTime ? tr(g.PlayTime) : '', img: g.ImageUrl || '',
+    desc: g.ShortDescription ? tr(g.ShortDescription) : '', howto: steps(g.HowToPlay ? tr(g.HowToPlay) : ''),
+    total: g.TotalQty, avail: g.AvailableQty
+  }));
+  const safeJson = (v) => JSON.stringify(v).replace(/</g, '\\u003c');
+%>
+
 <p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
 
-<section id="my-status" class="my-status" aria-live="polite"></section>
+<div class="book-layout">
+  <div class="book-main">
+    <section id="my-status" class="my-status" aria-live="polite"></section>
 
-<section class="booking-card" id="booking-card">
-  <div class="mode-toggle" role="radiogroup" aria-label="<%= t('ประเภทการจอง') %>">
-    <label class="mode-option is-active"><input type="radio" name="booking-mode" value="instore" checked> <%= t('🪑 เล่นที่ร้าน') %></label>
-    <label class="mode-option"><input type="radio" name="booking-mode" value="rental"> <%= t('🏠 เช่ากลับบ้าน') %></label>
+    <section class="booking-card" id="booking-card">
+      <div class="mode-toggle" role="radiogroup" aria-label="<%= t('ประเภทการจอง') %>">
+        <label class="mode-option is-active"><input type="radio" name="booking-mode" value="instore" checked> <%= t('🪑 เล่นที่ร้าน') %></label>
+        <label class="mode-option"><input type="radio" name="booking-mode" value="rental"> <%= t('🏠 เช่ากลับบ้าน') %></label>
+      </div>
+
+      <!-- ===== เล่นที่ร้าน: เลือกได้ทุกโต๊ะ — โต๊ะว่าง = จองทันที, โต๊ะไม่ว่าง = เข้าคิวรอโต๊ะนั้น ===== -->
+      <div id="instore-pane">
+        <p id="instore-busy-note" class="field-note warn" hidden><%= t('คุณมีโต๊ะหรือคิวอยู่แล้ว (ดูด้านบน) — จองโต๊ะได้ทีละ 1 · ยังเช่าเกมกลับบ้านได้ตามปกติ') %></p>
+        <form id="instore-form" autocomplete="off">
+          <div class="instore-split">
+            <div class="instore-fields">
+              <label class="field-block"><%= t('โต๊ะ') %>
+                <select id="instore-table" required></select>
+              </label>
+              <p id="instore-table-note" class="field-note"></p>
+
+              <div class="checkin-only field-block">
+                <span class="label-text" id="pkg-label"><%= t('แพ็กเกจเวลา') %></span>
+                <div class="pkg-buttons" role="radiogroup" aria-labelledby="pkg-label">
+                  <% packages.forEach((p, i) => { %>
+                    <button type="button" class="pkg-btn <%= i === 0 ? 'is-active' : '' %>" role="radio" aria-checked="<%= i === 0 %>" data-package="<%= p.PackageID %>">
+                      <span class="pkg-name"><%= tr(p.PackageName) %></span>
+                      <span class="pkg-price"><%= Number(p.Price).toLocaleString(locale) %> ฿</span>
+                    </button>
+                  <% }) %>
+                </div>
+                <select id="instore-package" hidden aria-hidden="true" tabindex="-1">
+                  <% packages.forEach(p => { %>
+                    <option value="<%= p.PackageID %>"><%= tr(p.PackageName) %> (<%= Number(p.Price).toLocaleString(locale) %> <%= t('บาท') %>)</option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <label class="checkin-only field-block"><span class="label-text"><%= t('บอร์ดเกม') %> <span class="optional"><%= t('(ไม่บังคับ)') %></span></span>
+                <select id="instore-game"></select>
+              </label>
+            </div>
+
+            <div class="store-map" aria-label="<%= t('แผนผังร้าน') %>">
+              <div class="store-map-head">
+                <span class="store-map-title"><%= t('แผนผังร้าน') %></span>
+                <span class="store-map-legend">
+                  <span class="lg lg-free"><%= t('ว่าง') %></span><span class="lg lg-queue"><%= t('มีคิว') %></span><span class="lg lg-busy"><%= t('ไม่ว่าง') %></span>
+                </span>
+              </div>
+              <div class="store-map-svg" id="store-map"></div>
+              <p class="store-map-caption" id="store-map-caption"></p>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="instore-submit"><%= t('🪑 จองโต๊ะ') %></button>
+            <div id="instore-msg" class="form-msg" role="status"></div>
+          </div>
+        </form>
+      </div>
+
+      <!-- ===== เช่ากลับบ้าน: เช่าจากบัญชีของตัวเอง — ต้องมีเลขบัตรประชาชน (กรอกครั้งแรกครั้งเดียว) ===== -->
+      <form id="rental-form" autocomplete="off" hidden>
+        <div class="form-row" id="rental-nid-row" <%= hasNationalId ? 'hidden' : '' %>>
+          <label><span class="label-text"><%= t('เลขบัตรประชาชน') %> <span class="required-mark">*</span></span>
+            <input type="text" id="rental-nid" inputmode="numeric" maxlength="13" placeholder="<%= t('ตัวเลข 13 หลัก') %>" <%= hasNationalId ? '' : 'required' %>>
+          </label>
+        </div>
+        <p class="field-note" id="rental-nid-note"><%= hasNationalId
+          ? t('✓ บัญชีของคุณลงทะเบียนเลขบัตรประชาชนแล้ว — เช่าได้เลย')
+          : t('การเช่ากลับบ้านต้องใช้เลขบัตรประชาชน 13 หลัก กรอกครั้งแรกครั้งเดียว (พนักงานจะตรวจบัตรตอนรับเกม)') %></p>
+
+        <div class="form-row">
+          <label class="grow"><%= t('เกม') %>
+            <select id="rental-game" required></select>
+          </label>
+          <label><%= t('กำหนดคืน') %>
+            <input type="date" id="rental-due" required min="<%= today %>">
+          </label>
+        </div>
+
+        <p id="rental-summary" class="rental-summary"></p>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="rental-submit"><%= t('🏠 ยืนยันเช่ากลับบ้าน') %></button>
+          <div id="rental-msg" class="form-msg" role="status"></div>
+        </div>
+      </form>
+    </section>
   </div>
 
-  <!-- ===== เล่นที่ร้าน: เลือกได้ทุกโต๊ะ — โต๊ะว่าง = จองทันที, โต๊ะไม่ว่าง = เข้าคิวรอโต๊ะนั้น ===== -->
-  <div id="instore-pane">
-    <p id="instore-busy-note" class="field-note warn" hidden><%= t('คุณมีโต๊ะหรือคิวอยู่แล้ว (ดูด้านบน) — จองโต๊ะได้ทีละ 1 · ยังเช่าเกมกลับบ้านได้ตามปกติ') %></p>
-    <form id="instore-form" autocomplete="off">
-      <div class="form-row">
-        <label class="grow"><%= t('โต๊ะ') %>
-          <select id="instore-table" required></select>
-        </label>
+  <aside class="book-side">
+    <!-- บอร์ดเกมแนะนำวันนี้ / บอร์ดเกมที่เลือก (กล่อง 3D เปลี่ยนตามเกมที่เลือกในฟอร์ม) -->
+    <section class="side-widget spot-card" id="game-spot" aria-live="polite">
+      <div class="spot-head">
+        <h2 class="spot-title" id="spot-title"><%= t('บอร์ดเกมแนะนำวันนี้') %></h2>
+        <span class="spot-sub" id="spot-sub">Game of the Day</span>
       </div>
-      <p id="instore-table-note" class="field-note"></p>
-
-      <div class="form-row">
-        <label class="checkin-only"><%= t('แพ็กเกจเวลา') %>
-          <select id="instore-package">
-            <% packages.forEach(p => { %>
-              <option value="<%= p.PackageID %>"><%= tr(p.PackageName) %> (<%= Number(p.Price).toLocaleString(locale) %> <%= t('บาท') %>)</option>
-            <% }) %>
-          </select>
-        </label>
-        <label class="checkin-only grow"><span class="label-text"><%= t('บอร์ดเกม') %> <span class="optional"><%= t('(เลือกได้ 1 เกม / เลือกหรือเปลี่ยนทีหลังได้ที่เมนู 🎲 บอร์ดเกม)') %></span></span>
-          <select id="instore-game"></select>
-        </label>
+      <div class="spot-stage" id="spot-stage"><img class="spot-fallback" id="spot-fallback" alt=""></div>
+      <div class="spot-info">
+        <div class="spot-name-row">
+          <strong class="spot-name" id="spot-name">-</strong>
+          <span class="spot-stock" id="spot-stock"></span>
+        </div>
+        <div class="spot-chips" id="spot-chips"></div>
+        <div class="spot-actions">
+          <a class="spot-btn" id="spot-3d" href="/games"><%= t('ส่อง 3D') %></a>
+          <button type="button" class="spot-btn" id="spot-howto-btn" aria-expanded="false" aria-controls="spot-howto"><%= t('วิธีเล่นด่วน') %></button>
+        </div>
+        <ol class="spot-howto" id="spot-howto" hidden></ol>
       </div>
+    </section>
 
-      <div class="form-actions">
-        <button type="submit" class="btn-primary" id="instore-submit"><%= t('🪑 จองโต๊ะ') %></button>
-        <div id="instore-msg" class="form-msg" role="status"></div>
+    <!-- ทอยสุ่มเกม -->
+    <button type="button" class="side-widget roll-card" id="roll-card">
+      <span class="d20" aria-hidden="true">
+        <svg viewBox="0 0 64 64">
+          <defs><linearGradient id="d20g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#c4b5fd"/><stop offset="1" stop-color="#4f46e5"/></linearGradient></defs>
+          <polygon points="32,3 57,17.5 57,46.5 32,61 7,46.5 7,17.5" fill="url(#d20g)" fill-opacity=".22" stroke="#a5b4fc" stroke-width="1.6"/>
+          <polygon points="32,14 49,42 15,42" fill="#818cf8" fill-opacity=".35" stroke="#c7d2fe" stroke-width="1.3"/>
+          <path d="M32 3 32 14M57 17.5 49 42M7 17.5 15 42M32 61 49 42M32 61 15 42M57 46.5 49 42M7 46.5 15 42M57 17.5 32 14M7 17.5 32 14" stroke="#a5b4fc" stroke-width="1" opacity=".8"/>
+          <text x="32" y="36" text-anchor="middle" font-size="10" font-weight="700" fill="#eef2ff" font-family="Kanit, sans-serif">20</text>
+        </svg>
+      </span>
+      <span class="roll-text">
+        <span class="roll-title"><%= t('ทอยสุ่มเกม') %> <span class="roll-en">Roll for a Game</span></span>
+        <span class="roll-desc" id="roll-desc"><%= t('เลือกไม่ถูก? กดทอยลูกเต๋า ระบบจะสุ่มเกมที่ยังว่างอยู่ให้') %></span>
+      </span>
+    </button>
+
+    <!-- สถานะร้านตอนนี้ -->
+    <section class="side-widget live-card" id="live-card" aria-live="polite">
+      <span class="live-pulse" aria-hidden="true"></span>
+      <div>
+        <div class="live-title"><%= t('ตอนนี้ในร้าน') %></div>
+        <div class="live-line" id="live-line">-</div>
       </div>
-    </form>
-  </div>
-
-  <!-- ===== เช่ากลับบ้าน: เช่าจากบัญชีของตัวเอง — ต้องมีเลขบัตรประชาชน (กรอกครั้งแรกครั้งเดียว) ===== -->
-  <form id="rental-form" autocomplete="off" hidden>
-    <div class="form-row" id="rental-nid-row" <%= hasNationalId ? 'hidden' : '' %>>
-      <label><span class="label-text"><%= t('เลขบัตรประชาชน') %> <span class="required-mark">*</span></span>
-        <input type="text" id="rental-nid" inputmode="numeric" maxlength="13" placeholder="<%= t('ตัวเลข 13 หลัก') %>" <%= hasNationalId ? '' : 'required' %>>
-      </label>
-    </div>
-    <p class="field-note" id="rental-nid-note"><%= hasNationalId
-      ? t('✓ บัญชีของคุณลงทะเบียนเลขบัตรประชาชนแล้ว — เช่าได้เลย')
-      : t('การเช่ากลับบ้านต้องใช้เลขบัตรประชาชน 13 หลัก กรอกครั้งแรกครั้งเดียว (พนักงานจะตรวจบัตรตอนรับเกม)') %></p>
-
-    <div class="form-row">
-      <label class="grow"><%= t('เกม') %>
-        <select id="rental-game" required></select>
-      </label>
-      <label><%= t('กำหนดคืน') %>
-        <input type="date" id="rental-due" required min="<%= today %>">
-      </label>
-    </div>
-
-    <p id="rental-summary" class="rental-summary"></p>
-
-    <div class="form-actions">
-      <button type="submit" class="btn-primary" id="rental-submit"><%= t('🏠 ยืนยันเช่ากลับบ้าน') %></button>
-      <div id="rental-msg" class="form-msg" role="status"></div>
-    </div>
-  </form>
-</section>
+    </section>
+  </aside>
+</div>
 
 <script>
   window.__initialState = <%- initialStateJson %>;
   window.__me = <%- meJson %>;
+  window.__bookGames = <%- safeJson(bookGames) %>;
 </script>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { extraScripts: [
+  'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+  'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',
+  '/js/games3d.js',
+  '/js/booking-ui.js'
+] }) %>
