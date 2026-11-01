@@ -2008,3 +2008,41 @@ body.app-tavern .live-card.is-full { --c: 248, 113, 113; }
   body.app-tavern .summary-cards .card-value { font-size: 1.95rem; }
   body.app-tavern .summary-cards .card::after { width: 50px; height: 50px; right: 10px; }
 }
+
+/* แผนผังร้านหน้าพนักงาน — ตรวจเช็คโต๊ะ (staff-map.js) */
+.staff-map { margin: 0 0 16px; }
+.staff-map .store-map-legend { flex-wrap: wrap; }
+.lg-soon::before { color: #fb923c; } .lg-over::before { color: #f43f5e; }
+.staff-map-alerts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 2px; min-height: 28px; }
+.sma-title { font-size: 0.8rem; font-weight: 600; color: var(--text-2); margin-right: 2px; }
+.sma-ok { font-size: 0.82rem; color: #86efac; }
+.sma-chip { --c: 251, 191, 36; font: inherit; font-size: 0.8rem; padding: 3px 10px; border-radius: 999px; cursor: pointer;
+  color: rgb(var(--c)); background: rgba(var(--c), 0.12); border: 1px solid rgba(var(--c), 0.55); }
+.sma-chip:hover, .sma-chip:focus-visible { background: rgba(var(--c), 0.24); outline: none; }
+.sma-chip.is-soon { --c: 251, 146, 60; } .sma-chip.is-over { --c: 244, 63, 94; }
+.staff-map-body { display: grid; grid-template-columns: minmax(0, 1fr) 250px; gap: 12px; align-items: start; }
+.staff-map .store-map-svg svg { max-height: 330px; }
+.sm-table.is-soon { --tc: 251, 146, 60; }
+.sm-table.is-over { --tc: 244, 63, 94; }
+.sm-table .sm-sub { fill: rgb(var(--tc)); font-size: 8.5px; font-weight: 600; font-family: "IBM Plex Sans Thai", sans-serif; paint-order: stroke; stroke: rgba(2, 6, 23, 0.9); stroke-width: 3px; }
+.staff-map-detail { padding: 10px 12px; border-radius: 10px; background: rgba(2, 8, 20, 0.55); border: 1px solid rgba(96, 165, 250, 0.25); font-size: 0.86rem; min-height: 120px; }
+.smd-hint { margin: 30px 0; text-align: center; color: var(--text-2); }
+.smd-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.smd-title { font-family: var(--font-head); font-size: 1.15rem; color: #e8f1ff; }
+.smd-badge { --c: 52, 211, 153; font-size: 0.74rem; padding: 2px 8px; border-radius: 999px; color: rgb(var(--c)); background: rgba(var(--c), 0.14); border: 1px solid rgba(var(--c), 0.5); white-space: nowrap; }
+.smd-badge.is-queue { --c: 251, 191, 36; } .smd-badge.is-busy { --c: 248, 113, 113; } .smd-badge.is-soon { --c: 251, 146, 60; } .smd-badge.is-over { --c: 244, 63, 94; }
+.smd-meta { color: var(--text-2); font-size: 0.8rem; margin: 2px 0 8px; }
+.smd-row { display: flex; justify-content: space-between; gap: 10px; padding: 4px 0; border-top: 1px solid rgba(148, 163, 184, 0.12); }
+.smd-row span { color: var(--text-2); }
+.smd-row strong { font-weight: 500; text-align: right; color: #e2e8f0; }
+.smd-sub { display: block; font-size: 0.76rem; color: var(--text-2); font-weight: 400; }
+.smd-time.is-soon { color: #fdba74; } .smd-time.is-over { color: #fb7185; }
+.smd-queue { margin: 2px 0 6px; padding-left: 20px; color: #e2e8f0; font-size: 0.82rem; }
+.smd-note { margin: 8px 0 0; padding: 6px 8px; border-radius: 8px; font-size: 0.8rem; background: rgba(251, 191, 36, 0.1); color: #fde68a; }
+.smd-note.is-over { background: rgba(244, 63, 94, 0.12); color: #fda4af; } .smd-note.is-soon { background: rgba(251, 146, 60, 0.12); color: #fed7aa; }
+.smd-go { margin-top: 10px; width: 100%; font: inherit; font-size: 0.84rem; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  color: #dbeafe; background: rgba(59, 130, 246, 0.16); border: 1px solid rgba(96, 165, 250, 0.5); }
+.smd-go:hover, .smd-go:focus-visible { background: rgba(59, 130, 246, 0.3); outline: none; }
+#tables-body tr.is-map-selected td { background: rgba(96, 165, 250, 0.12); }
+#tables-body tr.is-map-selected td:first-child { box-shadow: inset 3px 0 0 #60a5fa; }
+@media (max-width: 900px) { .staff-map-body { grid-template-columns: 1fr; } }

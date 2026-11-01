@@ -70,6 +70,20 @@
       </div>
     </section>
 
+    <section class="store-map staff-map" aria-labelledby="staff-map-title">
+      <div class="store-map-head">
+        <span class="store-map-title" id="staff-map-title"><%= t('แผนผังร้าน · ตรวจเช็คโต๊ะ') %></span>
+        <span class="store-map-legend">
+          <span class="lg lg-free"><%= t('ว่าง') %></span><span class="lg lg-queue"><%= t('มีคิว') %></span><span class="lg lg-busy"><%= t('ไม่ว่าง') %></span><span class="lg lg-soon"><%= t('ใกล้หมดเวลา') %></span><span class="lg lg-over"><%= t('เกินเวลา') %></span>
+        </span>
+      </div>
+      <div class="staff-map-alerts" id="staff-map-alerts" aria-live="polite"></div>
+      <div class="staff-map-body">
+        <div class="store-map-svg" id="staff-map"></div>
+        <div class="staff-map-detail" id="staff-map-detail" aria-live="polite"></div>
+      </div>
+    </section>
+
     <p class="page-meta"><%= t('อัปเดตล่าสุด') %> <span id="last-updated">-</span></p>
 
     <div class="table-scroll">
@@ -187,4 +201,4 @@
   })();
 </script>
 
-<%- include('partials/footer') %>
+<%- include('partials/footer', { extraScripts: ['/js/staff-map.js'] }) %>
